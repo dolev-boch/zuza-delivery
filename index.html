@@ -707,7 +707,7 @@
       // Configuration
       const CONFIG = {
         API_URL:
-          'https://script.google.com/macros/s/AKfycbwqXGHmyh32lienABf3sCbgte8QbxNc7T6HrKFfLwmJXxGuuKV7uSbeM2okohN6aDJ9Hw/exec',
+          'https://script.google.com/macros/s/AKfycbwRhzC5UA0vztk-Ia9s7RFALw2PW8XyhMKB8MWl7R-XKgtx4xl7FnRGfg5hDBUla64cdQ/exec',
         MAX_QUANTITY: 50,
         QUICK_AMOUNTS: [2, 4, 5, 10], // Quick buttons - excludes 1
         MAX_RETRIES: 3,
@@ -1085,8 +1085,41 @@
         setTimeout(() => msg.classList.remove('show'), type === 'success' ? 3000 : 5000);
       }
 
+      let loadingTimer = null;
+      let loadingStartTime = null;
+
       function showLoading(show) {
-        document.getElementById('loadingOverlay').classList.toggle('show', show);
+        const overlay = document.getElementById('loadingOverlay');
+        const loadingText = overlay.querySelector('.loading-text');
+
+        overlay.classList.toggle('show', show);
+
+        if (show) {
+          loadingStartTime = Date.now();
+          loadingText.textContent = 'שולח נתונים...';
+
+          // Update message after 5 seconds
+          loadingTimer = setTimeout(() => {
+            const elapsed = Math.floor((Date.now() - loadingStartTime) / 1000);
+            loadingText.textContent = `עדיין מעבד... (${elapsed} שניות)`;
+
+            // Continue updating every 3 seconds
+            const updateInterval = setInterval(() => {
+              if (!overlay.classList.contains('show')) {
+                clearInterval(updateInterval);
+                return;
+              }
+              const newElapsed = Math.floor((Date.now() - loadingStartTime) / 1000);
+              loadingText.textContent = `עדיין מעבד... (${newElapsed} שניות)`;
+            }, 3000);
+          }, 5000);
+        } else {
+          if (loadingTimer) {
+            clearTimeout(loadingTimer);
+            loadingTimer = null;
+          }
+          loadingStartTime = null;
+        }
       }
 
       function toggleCategory(categoryId) {
