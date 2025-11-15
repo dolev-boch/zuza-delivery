@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>אישור תעודת משלוח - זוזה פטיסרי</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial,
+          sans-serif;
+        background: linear-gradient(135deg, #1a2f2f 0%, #2d4a4a 100%);
+        min-height: 100vh;
+        padding: 20px;
+        direction: rtl;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #1a2f2f 0%, #2d4a4a 100%);
+        padding: 40px 30px;
+        text-align: center;
+        color: white;
+      }
+
+      .brand {
+        font-size: 48px;
+        font-style: italic;
+        font-family: Georgia, serif;
+        color: #c4a575;
+        margin-bottom: 8px;
+      }
+
+      .brand-subtitle {
+        font-size: 11px;
+        letter-spacing: 4px;
+        opacity: 0.9;
+      }
+
+      .header-title {
+        font-size: 24px;
+        color: #c4a575;
+        margin-top: 20px;
+        font-weight: 600;
+      }
+
+      .info-section {
+        background: #fff9f0;
+        padding: 30px;
+        border-bottom: 3px solid #c4a575;
+      }
+
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+      }
+
+      .info-item {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .info-label {
+        font-size: 13px;
+        color: #666;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .info-value {
+        font-size: 16px;
+        color: #1a2f2f;
+        font-weight: bold;
+      }
+
+      .content {
+        padding: 30px;
+      }
+
+      .instruction {
+        background: #e8f4f8;
+        padding: 20px;
+        border-radius: 8px;
+        border-right: 4px solid #4caf50;
+        margin-bottom: 30px;
+      }
+
+      .instruction h2 {
+        font-size: 18px;
+        color: #1a2f2f;
+        margin-bottom: 10px;
+      }
+
+      .instruction p {
+        color: #555;
+        line-height: 1.6;
+      }
+
+      .category-section {
+        margin-bottom: 30px;
+      }
+
+      .category-header {
+        background: #1a2f2f;
+        color: #c4a575;
+        padding: 12px 20px;
+        font-size: 18px;
+        font-weight: 600;
+        border-radius: 8px 8px 0 0;
+      }
+
+      .products-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 0 0 8px 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .products-table thead {
+        background: #f5f5f5;
+      }
+
+      .products-table th {
+        padding: 14px 16px;
+        text-align: right;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 2px solid #e0e0e0;
+        font-size: 14px;
+      }
+
+      .products-table th.quantity-col {
+        text-align: center;
+        width: 150px;
+      }
+
+      .products-table tbody tr {
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.2s;
+      }
+
+      .products-table tbody tr:hover {
+        background: #fafafa;
+      }
+
+      .products-table tbody tr:last-child {
+        border-bottom: none;
+      }
+
+      .products-table td {
+        padding: 14px 16px;
+        color: #333;
+      }
+
+      .product-name {
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      .product-notes {
+        font-size: 13px;
+        color: #666;
+      }
+
+      .quantity-input-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .quantity-input {
+        width: 80px;
+        padding: 8px 12px;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: bold;
+        transition: all 0.3s;
+      }
+
+      .quantity-input:focus {
+        outline: none;
+        border-color: #4caf50;
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+      }
+
+      .quantity-input.changed {
+        border-color: #ff9800;
+        background: #fff3e0;
+      }
+
+      .original-quantity {
+        font-size: 12px;
+        color: #999;
+        margin-top: 2px;
+      }
+
+      .actions {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding: 20px 30px;
+        border-top: 2px solid #e0e0e0;
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .btn {
+        padding: 16px 40px;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn-confirm {
+        background: #4caf50;
+        color: white;
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+      }
+
+      .btn-confirm:hover {
+        background: #45a049;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+      }
+
+      .btn-custom {
+        background: #ff9800;
+        color: white;
+        box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+      }
+
+      .btn-custom:hover {
+        background: #f57c00;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(255, 152, 0, 0.4);
+      }
+
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 60px 20px;
+      }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #c4a575;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .error {
+        background: #ffebee;
+        color: #c62828;
+        padding: 20px;
+        border-radius: 8px;
+        border-right: 4px solid #c62828;
+        margin: 20px;
+      }
+
+      .success {
+        background: #e8f5e9;
+        color: #2e7d32;
+        padding: 40px;
+        border-radius: 8px;
+        border-right: 4px solid #4caf50;
+        text-align: center;
+        margin: 20px;
+      }
+
+      .success h2 {
+        font-size: 28px;
+        margin-bottom: 10px;
+      }
+
+      .success p {
+        font-size: 16px;
+        line-height: 1.6;
+      }
+
+      @media (max-width: 768px) {
+        .info-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .actions {
+          flex-direction: column;
+        }
+
+        .btn {
+          width: 100%;
+          justify-content: center;
+        }
+
+        .quantity-input {
+          width: 70px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="brand">Zuza</div>
+        <div class="brand-subtitle">PATISSERIE</div>
+        <div class="header-title">אישור תעודת משלוח</div>
+      </div>
+
+      <div id="loadingState" class="loading">
+        <div class="spinner"></div>
+        <p>טוען נתונים...</p>
+      </div>
+
+      <div id="errorState" style="display: none"></div>
+
+      <div id="mainContent" style="display: none">
+        <div class="info-section">
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">תאריך משלוח</div>
+              <div class="info-value" id="deliveryDate"></div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">מספר תעודה</div>
+              <div class="info-value" id="certNumber"></div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">ממלא התעודה</div>
+              <div class="info-value" id="fillerName"></div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">סה"כ מוצרים</div>
+              <div class="info-value" id="totalProducts"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="instruction">
+            <h2>הוראות אישור</h2>
+            <p>
+              <strong>אישור מלא:</strong> אם כל המוצרים הגיעו במלואם, לחץ על כפתור "אישור מלא".<br />
+              <strong>אישור עם שינויים:</strong> אם יש הבדלים בכמויות, ערוך את הכמויות בטבלה ולחץ על
+              "אישור עם שינויים".
+            </p>
+          </div>
+
+          <div id="productsContainer"></div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-confirm" id="btnFullConfirm">
+            <span>✓</span>
+            אישור מלא - כל המוצרים הגיעו
+          </button>
+          <button class="btn btn-custom" id="btnCustomConfirm">
+            <span>📝</span>
+            אישור עם שינויים
+          </button>
+        </div>
+      </div>
+
+      <div id="successState" style="display: none">
+        <div class="success">
+          <h2>✓ האישור התקבל בהצלחה</h2>
+          <p>תעודת המשלוח עודכנה במערכת.<br />תודה על האישור!</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // CONFIGURATION - UPDATE THIS WITH YOUR GOOGLE APPS SCRIPT URL
+      const SCRIPT_URL =
+        'https://script.google.com/macros/s/AKfycbwCc5qCa-aZHhRKDF41t2jUscjOsVU7R3uH_pPiCo1OwHpwRcBIl67dUEOhpje0APb64Q/exec';
+
+      let deliveryData = null;
+      let originalQuantities = {};
+
+      // Parse URL parameters
+      function getUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        return {
+          day: params.get('day'),
+          submission_id: params.get('submission_id'),
+        };
+      }
+
+      // Load delivery data
+      async function loadDeliveryData() {
+        try {
+          const params = getUrlParams();
+
+          if (!params.day || !params.submission_id) {
+            throw new Error('חסרים פרמטרים נדרשים בקישור');
+          }
+
+          const response = await fetch(
+            `${SCRIPT_URL}?action=get_delivery&day=${params.day}&submission_id=${encodeURIComponent(
+              params.submission_id
+            )}`
+          );
+
+          const result = await response.json();
+
+          if (!result.success) {
+            throw new Error(result.error || 'שגיאה בטעינת הנתונים');
+          }
+
+          deliveryData = result.data;
+
+          // Store original quantities
+          deliveryData.products.forEach((product) => {
+            originalQuantities[product.key] = product.quantity;
+          });
+
+          displayDeliveryData();
+        } catch (error) {
+          console.error('Error loading data:', error);
+          showError(`שגיאה בטעינת הנתונים: ${error.message}`);
+        }
+      }
+
+      // Display delivery data
+      function displayDeliveryData() {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+
+        // Set general info
+        document.getElementById('deliveryDate').textContent = deliveryData.delivery_date;
+        document.getElementById('certNumber').textContent = deliveryData.certificate_number;
+        document.getElementById('fillerName').textContent = deliveryData.filler_name;
+        document.getElementById('totalProducts').textContent = deliveryData.products.length;
+
+        // Group products by category
+        const categorized = {};
+        deliveryData.products.forEach((product) => {
+          if (!categorized[product.category]) {
+            categorized[product.category] = [];
+          }
+          categorized[product.category].push(product);
+        });
+
+        // Build products HTML
+        const container = document.getElementById('productsContainer');
+        container.innerHTML = '';
+
+        Object.keys(categorized).forEach((category) => {
+          const section = document.createElement('div');
+          section.className = 'category-section';
+
+          const header = document.createElement('div');
+          header.className = 'category-header';
+          header.textContent = category;
+          section.appendChild(header);
+
+          const table = document.createElement('table');
+          table.className = 'products-table';
+
+          // Table header
+          const thead = document.createElement('thead');
+          thead.innerHTML = `
+                    <tr>
+                        <th>שם מוצר</th>
+                        <th class="quantity-col">כמות</th>
+                        <th>הערות</th>
+                    </tr>
+                `;
+          table.appendChild(thead);
+
+          // Table body
+          const tbody = document.createElement('tbody');
+          categorized[category].forEach((product) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                        <td>
+                            <div class="product-name">${product.name}</div>
+                        </td>
+                        <td>
+                            <div class="quantity-input-wrapper">
+                                <input 
+                                    type="number" 
+                                    class="quantity-input" 
+                                    value="${product.quantity}" 
+                                    min="0" 
+                                    data-product-key="${product.key}"
+                                    data-original="${product.quantity}"
+                                >
+                            </div>
+                        </td>
+                        <td>
+                            <div class="product-notes">${product.notes || '-'}</div>
+                        </td>
+                    `;
+            tbody.appendChild(tr);
+          });
+          table.appendChild(tbody);
+
+          section.appendChild(table);
+          container.appendChild(section);
+        });
+
+        // Add event listeners to inputs
+        document.querySelectorAll('.quantity-input').forEach((input) => {
+          input.addEventListener('input', handleQuantityChange);
+        });
+
+        // Add button listeners
+        document.getElementById('btnFullConfirm').addEventListener('click', handleFullConfirm);
+        document.getElementById('btnCustomConfirm').addEventListener('click', handleCustomConfirm);
+      }
+
+      // Handle quantity input change
+      function handleQuantityChange(e) {
+        const input = e.target;
+        const original = parseInt(input.dataset.original);
+        const current = parseInt(input.value) || 0;
+
+        if (current !== original) {
+          input.classList.add('changed');
+        } else {
+          input.classList.remove('changed');
+        }
+      }
+
+      // Handle full confirmation
+      async function handleFullConfirm() {
+        if (!confirm('האם אתה בטוח שכל המוצרים הגיעו במלואם?')) {
+          return;
+        }
+
+        await submitConfirmation(true);
+      }
+
+      // Handle custom confirmation
+      async function handleCustomConfirm() {
+        const changedInputs = document.querySelectorAll('.quantity-input.changed');
+
+        if (changedInputs.length === 0) {
+          alert('לא זוהו שינויים בכמויות. אם הכל בסדר, לחץ על "אישור מלא".');
+          return;
+        }
+
+        if (!confirm(`זוהו ${changedInputs.length} שינויים בכמויות. האם לאשר את השינויים?`)) {
+          return;
+        }
+
+        await submitConfirmation(false);
+      }
+
+      // Submit confirmation
+      async function submitConfirmation(fullConfirmation) {
+        try {
+          // Disable buttons
+          document.getElementById('btnFullConfirm').disabled = true;
+          document.getElementById('btnCustomConfirm').disabled = true;
+
+          const params = getUrlParams();
+
+          // Collect product quantities
+          const confirmedProducts = [];
+          document.querySelectorAll('.quantity-input').forEach((input) => {
+            const key = input.dataset.productKey;
+            const quantity = parseInt(input.value) || 0;
+
+            // Find product name
+            const product = deliveryData.products.find((p) => p.key === key);
+
+            confirmedProducts.push({
+              key: key,
+              name: product.name,
+              quantity: quantity,
+            });
+          });
+
+          const confirmationData = {
+            day: params.day,
+            submission_id: params.submission_id,
+            full_confirmation: fullConfirmation,
+            confirmed_products: confirmedProducts,
+          };
+
+          const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(confirmationData) + '&action=confirm',
+          });
+
+          const result = await response.json();
+
+          if (!result.success) {
+            throw new Error(result.error || 'שגיאה בשליחת האישור');
+          }
+
+          // Show success
+          document.getElementById('mainContent').style.display = 'none';
+          document.getElementById('successState').style.display = 'block';
+        } catch (error) {
+          console.error('Error submitting confirmation:', error);
+          alert(`שגיאה בשליחת האישור: ${error.message}`);
+
+          // Re-enable buttons
+          document.getElementById('btnFullConfirm').disabled = false;
+          document.getElementById('btnCustomConfirm').disabled = false;
+        }
+      }
+
+      // Show error
+      function showError(message) {
+        document.getElementById('loadingState').style.display = 'none';
+        const errorDiv = document.getElementById('errorState');
+        errorDiv.innerHTML = `<div class="error"><strong>שגיאה:</strong> ${message}</div>`;
+        errorDiv.style.display = 'block';
+      }
+
+      // Initialize on page load
+      window.addEventListener('DOMContentLoaded', loadDeliveryData);
+    </script>
+  </body>
+</html>
