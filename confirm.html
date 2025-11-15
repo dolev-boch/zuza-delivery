@@ -207,12 +207,6 @@
         background: #fff3e0;
       }
 
-      .original-quantity {
-        font-size: 12px;
-        color: #999;
-        margin-top: 2px;
-      }
-
       .actions {
         position: sticky;
         bottom: 0;
@@ -245,7 +239,7 @@
         box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
       }
 
-      .btn-confirm:hover {
+      .btn-confirm:hover:not(:disabled) {
         background: #45a049;
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
@@ -257,7 +251,7 @@
         box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
       }
 
-      .btn-custom:hover {
+      .btn-custom:hover:not(:disabled) {
         background: #f57c00;
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(255, 152, 0, 0.4);
@@ -266,7 +260,6 @@
       .btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
-        transform: none;
       }
 
       .loading {
@@ -335,10 +328,6 @@
           width: 100%;
           justify-content: center;
         }
-
-        .quantity-input {
-          width: 70px;
-        }
       }
     </style>
   </head>
@@ -361,8 +350,8 @@
         <div class="info-section">
           <div class="info-grid">
             <div class="info-item">
-              <div class="info-label">תאריך משלוח</div>
-              <div class="info-value" id="deliveryDate"></div>
+              <div class="info-label">תאריך ושעה</div>
+              <div class="info-value" id="deliveryDateTime"></div>
             </div>
             <div class="info-item">
               <div class="info-label">מספר תעודה</div>
@@ -413,12 +402,38 @@
     </div>
 
     <script>
-      // CONFIGURATION - UPDATE THIS WITH YOUR GOOGLE APPS SCRIPT URL
+      // CONFIGURATION - UPDATE WITH YOUR GOOGLE APPS SCRIPT URL
       const SCRIPT_URL =
-        'https://script.google.com/macros/s/AKfycbwCc5qCa-aZHhRKDF41t2jUscjOsVU7R3uH_pPiCo1OwHpwRcBIl67dUEOhpje0APb64Q/exec';
+        'https://script.google.com/macros/s/AKfycbz-G4Y1Ew_fy8aslRs3bQiE7Zphoi-Zc9TlmLUzg8gpcpn8Kb99mUJwE91a982mEaXePQ/exec';
 
       let deliveryData = null;
       let originalQuantities = {};
+
+      // Format datetime to Israeli timezone
+      function formatIsraeliDateTime(dateString, timeString) {
+        try {
+          // If we have a time string from the sheet
+          if (timeString && timeString.includes(':')) {
+            return `${dateString} ${timeString}`;
+          }
+
+          // Create current date/time in Israeli timezone
+          const now = new Date();
+          const options = {
+            timeZone: 'Asia/Jerusalem',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          };
+          const timeFormatter = new Intl.DateTimeFormat('he-IL', options);
+          const time = timeFormatter.format(now);
+
+          return `${dateString} ${time}`;
+        } catch (error) {
+          console.error('Error formatting date:', error);
+          return dateString;
+        }
+      }
 
       // Parse URL parameters
       function getUrlParams() {
@@ -438,13 +453,22 @@
             throw new Error('חסרים פרמטרים נדרשים בקישור');
           }
 
-          const response = await fetch(
-            `${SCRIPT_URL}?action=get_delivery&day=${params.day}&submission_id=${encodeURIComponent(
-              params.submission_id
-            )}`
-          );
+          const url = `${SCRIPT_URL}?action=get_delivery&day=${
+            params.day
+          }&submission_id=${encodeURIComponent(params.submission_id)}`;
+          console.log('Fetching from:', url);
+
+          const response = await fetch(url, {
+            method: 'GET',
+            redirect: 'follow',
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
 
           const result = await response.json();
+          console.log('Response:', result);
 
           if (!result.success) {
             throw new Error(result.error || 'שגיאה בטעינת הנתונים');
@@ -469,8 +493,13 @@
         document.getElementById('loadingState').style.display = 'none';
         document.getElementById('mainContent').style.display = 'block';
 
-        // Set general info
-        document.getElementById('deliveryDate').textContent = deliveryData.delivery_date;
+        // Format and display date/time
+        const dateTime = formatIsraeliDateTime(
+          deliveryData.delivery_date,
+          deliveryData.submission_time
+        );
+        document.getElementById('deliveryDateTime').textContent = dateTime;
+
         document.getElementById('certNumber').textContent = deliveryData.certificate_number;
         document.getElementById('fillerName').textContent = deliveryData.filler_name;
         document.getElementById('totalProducts').textContent = deliveryData.products.length;
@@ -500,7 +529,6 @@
           const table = document.createElement('table');
           table.className = 'products-table';
 
-          // Table header
           const thead = document.createElement('thead');
           thead.innerHTML = `
                     <tr>
@@ -511,7 +539,6 @@
                 `;
           table.appendChild(thead);
 
-          // Table body
           const tbody = document.createElement('tbody');
           categorized[category].forEach((product) => {
             const tr = document.createElement('tr');
@@ -527,6 +554,7 @@
                                     value="${product.quantity}" 
                                     min="0" 
                                     data-product-key="${product.key}"
+                                    data-product-name="${product.name}"
                                     data-original="${product.quantity}"
                                 >
                             </div>
@@ -543,17 +571,16 @@
           container.appendChild(section);
         });
 
-        // Add event listeners to inputs
+        // Add event listeners
         document.querySelectorAll('.quantity-input').forEach((input) => {
           input.addEventListener('input', handleQuantityChange);
         });
 
-        // Add button listeners
         document.getElementById('btnFullConfirm').addEventListener('click', handleFullConfirm);
         document.getElementById('btnCustomConfirm').addEventListener('click', handleCustomConfirm);
       }
 
-      // Handle quantity input change
+      // Handle quantity change
       function handleQuantityChange(e) {
         const input = e.target;
         const original = parseInt(input.dataset.original);
@@ -595,43 +622,52 @@
       async function submitConfirmation(fullConfirmation) {
         try {
           // Disable buttons
-          document.getElementById('btnFullConfirm').disabled = true;
-          document.getElementById('btnCustomConfirm').disabled = true;
+          const btnFull = document.getElementById('btnFullConfirm');
+          const btnCustom = document.getElementById('btnCustomConfirm');
+          btnFull.disabled = true;
+          btnCustom.disabled = true;
 
           const params = getUrlParams();
 
-          // Collect product quantities
+          // Collect all product quantities
           const confirmedProducts = [];
           document.querySelectorAll('.quantity-input').forEach((input) => {
             const key = input.dataset.productKey;
+            const name = input.dataset.productName;
             const quantity = parseInt(input.value) || 0;
-
-            // Find product name
-            const product = deliveryData.products.find((p) => p.key === key);
 
             confirmedProducts.push({
               key: key,
-              name: product.name,
+              name: name,
               quantity: quantity,
             });
           });
 
           const confirmationData = {
+            action: 'confirm',
             day: params.day,
             submission_id: params.submission_id,
             full_confirmation: fullConfirmation,
             confirmed_products: confirmedProducts,
           };
 
+          console.log('Sending confirmation:', confirmationData);
+
           const response = await fetch(SCRIPT_URL, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(confirmationData) + '&action=confirm',
+            body: JSON.stringify(confirmationData),
+            redirect: 'follow',
           });
 
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
           const result = await response.json();
+          console.log('Confirmation response:', result);
 
           if (!result.success) {
             throw new Error(result.error || 'שגיאה בשליחת האישור');
@@ -642,7 +678,7 @@
           document.getElementById('successState').style.display = 'block';
         } catch (error) {
           console.error('Error submitting confirmation:', error);
-          alert(`שגיאה בשליחת האישור: ${error.message}`);
+          alert(`שגיאה בשליחת האישור: ${error.message}\n\nנסה שנית או פנה לתמיכה טכנית.`);
 
           // Re-enable buttons
           document.getElementById('btnFullConfirm').disabled = false;
@@ -658,7 +694,7 @@
         errorDiv.style.display = 'block';
       }
 
-      // Initialize on page load
+      // Initialize
       window.addEventListener('DOMContentLoaded', loadDeliveryData);
     </script>
   </body>
