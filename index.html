@@ -707,7 +707,7 @@
       // Configuration
       const CONFIG = {
         API_URL:
-          'https://script.google.com/macros/s/AKfycbwo0dibtL7JgM1acLkjyx2iDYL3GbxmtJCk3QzrtpuWCDoEYHPqtMLul9iVZAihEjo8Ww/exec',
+          'https://script.google.com/macros/s/AKfycbzyCsH9rgrlkvFvz30-7YfDiVdGzLR6RCFQ7zw7J5m4CT0efrsctTR6pSaw914vRBbyzQ/exec',
         MAX_QUANTITY: 50,
         QUICK_AMOUNTS: [2, 4, 5, 10], // Quick buttons - excludes 1
         MAX_RETRIES: 3,
@@ -945,6 +945,30 @@
           2,
           '0'
         )}/${date.getFullYear()}`;
+      }
+
+      function getIsraeliTime() {
+        // Get current time in Israeli timezone (Asia/Jerusalem)
+        const now = new Date();
+
+        const formatter = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Jerusalem',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+
+        const parts = formatter.formatToParts(now);
+        const partsMap = {};
+        parts.forEach((part) => {
+          partsMap[part.type] = part.value;
+        });
+
+        // Return in format: DD/MM/YYYY HH:MM
+        return `${partsMap.day}/${partsMap.month}/${partsMap.year} ${partsMap.hour}:${partsMap.minute}`;
       }
 
       function generateId() {
@@ -1287,7 +1311,6 @@
         const formData = new FormData(form);
         const data = {
           submission_id: generateId(),
-          timestamp: new Date().toISOString(),
           delivery_date: formatDate(formData.get('deliveryDate')),
           certificate_number: formData.get('certificateNumber') || '',
           filler_name: formData.get('fillerName') || '',
