@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Zuza Patisserie - תעודת משלוח</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      :root {
+        --dark-green: #1a2f2f;
+        --gold: #c4a575;
+        --light-bg: #fafafa;
+        --white: #ffffff;
+        --text: #333333;
+        --text-light: #666666;
+        --border: #e0e0e0;
+        --success: #4caf50;
+        --error: #f44336;
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.15);
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        background: var(--light-bg);
+        color: var(--text);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      .header {
+        background: var(--dark-green);
+        padding: 20px;
+        text-align: center;
+      }
+
+      .logo-text {
+        font-size: 36px;
+        font-style: italic;
+        color: var(--gold);
+        font-family: Georgia, serif;
+        margin: 0;
+        line-height: 1;
+      }
+
+      .logo-subtitle {
+        font-size: 11px;
+        letter-spacing: 3px;
+        color: var(--white);
+        margin-top: 4px;
+        font-weight: 300;
+      }
+
+      .header-title {
+        font-size: 16px;
+        color: var(--gold);
+        font-weight: 400;
+        margin: 8px 0 0 0;
+      }
+
+      .main-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 16px;
+        padding-bottom: 100px;
+      }
+
+      .info-card {
+        background: var(--white);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: var(--shadow);
+      }
+
+      .info-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--dark-green);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .info-icon {
+        width: 20px;
+        height: 20px;
+        color: var(--gold);
+      }
+
+      .input-group {
+        margin-bottom: 16px;
+      }
+
+      .input-group:last-child {
+        margin-bottom: 0;
+      }
+
+      label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 6px;
+      }
+
+      input[type='text'],
+      input[type='date'] {
+        width: 100%;
+        padding: 14px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 16px;
+        background: var(--white);
+        transition: border-color 0.2s;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: var(--gold);
+      }
+
+      .category-card {
+        background: var(--white);
+        border-radius: 12px;
+        margin-bottom: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+      }
+
+      .category-header {
+        background: var(--dark-green);
+        color: var(--gold);
+        padding: 16px 20px;
+        font-size: 16px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .category-count {
+        background: var(--gold);
+        color: var(--dark-green);
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .category-arrow {
+        font-size: 12px;
+        transition: transform 0.3s;
+      }
+
+      .category-header.active .category-arrow {
+        transform: rotate(180deg);
+      }
+
+      .category-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+
+      .category-content.active {
+        max-height: 10000px;
+      }
+
+      .category-body {
+        padding: 16px;
+      }
+
+      .product-item {
+        background: var(--light-bg);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+      }
+
+      .product-item:last-child {
+        margin-bottom: 0;
+      }
+
+      .product-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 10px;
+      }
+
+      .product-controls {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      /* Custom Select Dropdown */
+      .custom-select-wrapper {
+        position: relative;
+        width: 100px;
+        flex-shrink: 0;
+      }
+
+      .custom-select-trigger {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        background: var(--white);
+        font-size: 16px;
+        font-weight: 600;
+        text-align: center;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.2s;
+      }
+
+      .custom-select-trigger:active {
+        border-color: var(--gold);
+      }
+
+      .custom-select-trigger.open {
+        border-color: var(--gold);
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+
+      .select-arrow {
+        font-size: 10px;
+        transition: transform 0.2s;
+      }
+
+      .custom-select-trigger.open .select-arrow {
+        transform: rotate(180deg);
+      }
+
+      .custom-select-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--white);
+        border: 2px solid var(--gold);
+        border-top: none;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        box-shadow: var(--shadow-lg);
+        z-index: 1000;
+        display: none;
+        max-height: 280px;
+        overflow: hidden;
+      }
+
+      .custom-select-dropdown.open {
+        display: block;
+      }
+
+      .select-search {
+        padding: 10px;
+        border-bottom: 2px solid var(--border);
+        position: sticky;
+        top: 0;
+        background: var(--white);
+        z-index: 1;
+      }
+
+      .select-search input {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid var(--border);
+        border-radius: 6px;
+        font-size: 16px;
+        text-align: center;
+      }
+
+      .select-search input:focus {
+        outline: none;
+        border-color: var(--gold);
+      }
+
+      .select-options {
+        max-height: 200px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .select-option {
+        padding: 12px;
+        text-align: center;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        border-bottom: 1px solid var(--border);
+        transition: background 0.15s;
+      }
+
+      .select-option:last-child {
+        border-bottom: none;
+      }
+
+      .select-option:active {
+        background: var(--gold);
+        color: var(--white);
+      }
+
+      .select-option.hidden {
+        display: none;
+      }
+
+      .no-results {
+        padding: 20px;
+        text-align: center;
+        color: var(--text-light);
+        font-size: 14px;
+      }
+
+      /* Quick Buttons */
+      .quick-buttons {
+        display: flex;
+        gap: 6px;
+        flex: 1;
+      }
+
+      .quick-btn {
+        flex: 1;
+        padding: 10px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        background: var(--white);
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .quick-btn:active {
+        background: var(--dark-green);
+        color: var(--gold);
+        border-color: var(--dark-green);
+      }
+
+      .notes-field {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        resize: none;
+        min-height: 60px;
+        font-family: inherit;
+      }
+
+      .notes-field:focus {
+        border-color: var(--gold);
+        outline: none;
+      }
+
+      .notes-field::placeholder {
+        color: #999;
+      }
+
+      /* Custom Products */
+      .custom-product {
+        background: #fff9f0;
+        border: 2px solid var(--gold);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+        position: relative;
+      }
+
+      .custom-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .custom-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--gold);
+      }
+
+      .remove-btn {
+        background: var(--error);
+        color: var(--white);
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .custom-name-input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 15px;
+        margin-bottom: 8px;
+      }
+
+      .add-custom-btn {
+        width: 100%;
+        padding: 14px;
+        background: var(--gold);
+        color: var(--white);
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 12px;
+      }
+
+      .add-custom-btn:active {
+        opacity: 0.8;
+      }
+
+      /* Submit Section */
+      .submit-section {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 16px;
+        background: var(--white);
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+        z-index: 999;
+      }
+
+      .submit-btn {
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 16px;
+        background: var(--dark-green);
+        color: var(--gold);
+        border: none;
+        border-radius: 12px;
+        font-size: 17px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .submit-btn:active {
+        opacity: 0.9;
+      }
+
+      .submit-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* Messages */
+      .message {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 16px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        z-index: 10000;
+        max-width: 90%;
+        text-align: center;
+        box-shadow: var(--shadow-lg);
+        display: none;
+      }
+
+      .message.show {
+        display: block;
+        animation: slideDown 0.3s ease;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateX(-50%) translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+
+      .message.success {
+        background: var(--success);
+        color: var(--white);
+      }
+
+      .message.error {
+        background: var(--error);
+        color: var(--white);
+      }
+
+      /* Loading */
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(26, 47, 47, 0.95);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 10001;
+      }
+
+      .loading-overlay.show {
+        display: flex;
+      }
+
+      .loading-content {
+        text-align: center;
+        color: var(--gold);
+      }
+
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(196, 165, 117, 0.3);
+        border-top-color: var(--gold);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .loading-text {
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      /* Overlay to close dropdown */
+      .select-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 999;
+        display: none;
+      }
+
+      .select-overlay.active {
+        display: block;
+      }
+
+      /* iOS Specific */
+      @supports (-webkit-touch-callout: none) {
+        input,
+        textarea {
+          font-size: 16px !important;
+        }
+      }
+
+      /* Android Chrome */
+      @media screen and (max-width: 767px) {
+        input,
+        textarea {
+          font-size: 16px !important;
+        }
+      }
+
+      /* Small screens */
+      @media (max-width: 360px) {
+        .quick-buttons {
+          flex-wrap: wrap;
+        }
+
+        .quick-btn {
+          flex: 0 0 calc(50% - 3px);
+        }
+      }
+
+      /* Scrollbar */
+      .select-options::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .select-options::-webkit-scrollbar-track {
+        background: var(--light-bg);
+      }
+
+      .select-options::-webkit-scrollbar-thumb {
+        background: var(--gold);
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <div class="loading-text">שולח נתונים...</div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="messageContainer" class="message"></div>
+
+    <!-- Select Overlay -->
+    <div class="select-overlay" id="selectOverlay"></div>
+
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-container">
+        <h1 class="logo-text">Zuza</h1>
+        <div class="logo-subtitle">PATISSERIE</div>
+      </div>
+      <p class="header-title">תעודת משלוח דיגיטלית</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container">
+      <form id="deliveryForm">
+        <!-- General Info -->
+        <section class="info-card">
+          <h2 class="info-title">
+            <svg class="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            פרטי התעודה
+          </h2>
+
+          <div class="input-group">
+            <label for="deliveryDate">תאריך משלוח *</label>
+            <input type="date" id="deliveryDate" name="deliveryDate" required />
+          </div>
+
+          <div class="input-group">
+            <label for="certificateNumber">מספר תעודה</label>
+            <input
+              type="text"
+              id="certificateNumber"
+              name="certificateNumber"
+              placeholder="הכנס מספר (אופציונלי)"
+            />
+          </div>
+
+          <div class="input-group">
+            <label for="fillerName">ממלא התעודה *</label>
+            <input type="text" id="fillerName" name="fillerName" required placeholder="שם מלא" />
+          </div>
+        </section>
+
+        <!-- Categories Container -->
+        <div id="categoriesContainer"></div>
+      </form>
+    </main>
+
+    <!-- Submit Section -->
+    <div class="submit-section">
+      <button type="submit" form="deliveryForm" class="submit-btn" id="submitBtn">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+        שלח תעודת משלוח
+      </button>
+    </div>
+
+    <script>
+      // Configuration
+      const CONFIG = {
+        API_URL:
+          'https://script.google.com/macros/s/AKfycbzl3_8nZuvcEGIy_5yGYdhxlMWQ90jq0TZasuEKlyyG_6GhIxYZEfo3dwincjAAG1rh7A/exec',
+        MAX_QUANTITY: 50,
+        QUICK_AMOUNTS: [2, 4, 5, 10], // Quick buttons - excludes 1
+        MAX_RETRIES: 3,
+        RETRY_DELAY: 2000,
+      };
+
+      // State
+      const State = {
+        customProductCounter: 0,
+        isSubmitting: false,
+        openSelectId: null,
+      };
+
+      // PRODUCT KEYS
+      const PRODUCT_KEYS = {
+        // Sweet pastries - מאפים מתוקים
+        'קרואסון חמאה': 'sweet_croissant_butter',
+        'קרואסון שוקולד': 'sweet_croissant_chocolate',
+        'מאפה פירות': 'sweet_fruit_pastry',
+        'מאפה פקאן': 'sweet_pecan_pastry',
+        'מאפה שקדים שוקולד חלב': 'sweet_almond_milk_chocolate',
+        סינבון: 'sweet_cinnamon',
+        'פאן סוויס': 'sweet_pain_suisse',
+        'מאפה פפיון': 'sweet_butterfly_pastry',
+        'מאפה שתי וערב': 'sweet_shti_veerev',
+        רוגלך: 'sweet_rugelach',
+        "שוקולד צ'יפס": 'sweet_chocolate_chips',
+        'קרואסון פיסטוק': 'sweet_croissant_pistachio',
+        'קרואסון גבינה פירות יער': 'sweet_croissant_cheese_berry',
+        'קרואסון שקדים': 'sweet_croissant_almonds',
+        'קווין אמאן': 'sweet_kouign_amann',
+
+        // Salty - מלוחים
+        'לחמניה ריקה': 'salty_empty_bun',
+        'בייגל ריק': 'salty_empty_bagel',
+        'לחמנית פרג ריקה': 'salty_empty_poppy_bun',
+        'בורקס גבינה ריק': 'salty_empty_cheese_bourekas',
+        'מאפה מלוח (מלבן)': 'salty_rectangle_pastry',
+        "ריבועי פוקאצ'ה": 'salty_focaccia_squares',
+        "פוקאצ'ה אישית": 'salty_personal_focaccia',
+        'קיש ק.10': 'salty_quiche_10',
+        בייגלסון: 'salty_bagelson',
+        'חלות בריוש': 'salty_brioche_challah',
+        'כיכר לחם': 'salty_bread_loaf',
+
+        // Sandwiches - כריכים
+        'מחמצת סלק': 'sandwiches_beet_sourdough',
+        'מחמצת חצילים': 'sandwiches_eggplant_sourdough',
+        'בריוש פרג קממבר': 'sandwiches_brioche_poppy_camembert',
+        'כריך בורקס גבינות': 'sandwiches_bourekas_cheeses',
+        'כריך קרואסון חמאה': 'sandwiches_croissant_butter',
+        'כריך בייגל': 'sandwiches_bagel',
+        "כריך פוקאצ'ה": 'sandwiches_focaccia',
+
+        // Shelf products - מוצרי מדף
+        'עוגת שמרים': 'shelf_yeast_cake',
+        חלות: 'shelf_challah',
+        בחושות: 'shelf_thick',
+
+        // Whole cakes - עוגות שלמות
+        "פס פאדג' מסקרפונה": 'whole_cakes_fudge_mascarpone_strip',
+        'פס רושה אגוזי לוז': 'whole_cakes_rusha_hazelnut_strip',
+        'פס מנגו פסיפלורה': 'whole_cakes_mango_passionfruit_strip',
+        'פס קפה פקאן': 'whole_cakes_coffee_pecan_strip',
+        'טריקולד ק.20': 'whole_cakes_tricolor_20',
+        'פיסטוק פירות יער ק.20': 'whole_cakes_pistachio_berry_20',
+        'גבינה פירורים ק.20': 'whole_cakes_cheese_crumbs_20',
+        'גבינה אפויה ק.20': 'whole_cakes_baked_cheese_20',
+        'ריבוע רושה אגוזי לוז': 'whole_cakes_rusha_hazelnut_square',
+        'ריבוע קפה פקאן': 'whole_cakes_coffee_pecan_square',
+        "פאדג' שוקולד": 'whole_cakes_chocolate_fudge',
+
+        // Vitrina desserts - קינוחי ויטרינה
+        "קשיו דולצ'ה": 'vitrina_cashew_dolce',
+        'פיסטוק פירות יער': 'vitrina_pistachio_berry',
+        'פחזנית וניל פטל': 'vitrina_pheasant_vanilla_raspberry',
+        'סבלה פקאן': 'vitrina_sabla_pecan',
+        'טארט פירות': 'vitrina_fruit_tart',
+        'טארט לימון 100%': 'vitrina_lemon_tart_100',
+        '100 אחוז שוקולד': 'vitrina_chocolate_100',
+        'רושה אגוזי לוז': 'vitrina_rusha_hazelnut',
+        'פריז ברסט': 'vitrina_paris_brest',
+        'כדור שוקולד': 'vitrina_chocolate_ball',
+        'פחזנית וניל אישית': 'vitrina_personal_pheasant_vanilla',
+
+        // Cookies - עוגיות
+        פלורנטין: 'cookies_florentine',
+        'קפה שקדים': 'cookies_coffee_almonds',
+        'שקדים לימון': 'cookies_almonds_lemon',
+        פקאן: 'cookies_pecan',
+        בראוניז: 'cookies_brownies',
+        'חמאה לוז': 'cookies_butter_hazelnut',
+        פרמזן: 'cookies_parmesan',
+        'עוגיות תמרים': 'cookies_dates',
+        אלפחורס: 'cookies_alfajores',
+        'פיסטוק לל"ג': 'cookies_pistachio_lag_baomer',
+        'קקאו שוקולד': 'cookies_cocoa_chocolate',
+
+        // Various - מוצרים שונים
+        'מאפה פטריות': 'various_mushroom_pastry',
+        'מאפה גבינה ופירות יער': 'various_cheese_berry_pastry',
+        'עוגת גבינה באסקית': 'various_basque_cheesecake',
+        'חלמון מפוסטר': 'various_yolk_pasteurized',
+        'פרמזן חומר גלם': 'various_parmesan_raw',
+        'שמנת מתוקה': 'various_sweet_cream',
+        חמאה: 'various_butter',
+        'פיסטוק פירות יער': 'various_pistachio_berry',
+        'פרסבורגר פרג': 'various_pressburger_poppy',
+      };
+
+      // Categories Data
+      const CATEGORIES = {
+        sweet: {
+          name: 'מאפים מתוקים',
+          products: [
+            'קרואסון חמאה',
+            'קרואסון שוקולד',
+            'מאפה פירות',
+            'מאפה פקאן',
+            'מאפה שקדים שוקולד חלב',
+            'סינבון',
+            'פאן סוויס',
+            'מאפה פפיון',
+            'מאפה שתי וערב',
+            'רוגלך',
+            "שוקולד צ'יפס",
+            'קרואסון פיסטוק',
+            'קרואסון גבינה פירות יער',
+            'קרואסון שקדים',
+            'קווין אמאן',
+          ],
+        },
+        salty: {
+          name: 'מלוחים',
+          products: [
+            'לחמניה ריקה',
+            'בייגל ריק',
+            'לחמנית פרג ריקה',
+            'בורקס גבינה ריק',
+            'מאפה מלוח (מלבן)',
+            "ריבועי פוקאצ'ה",
+            "פוקאצ'ה אישית",
+            'קיש ק.10',
+            'בייגלסון',
+            'חלות בריוש',
+            'כיכר לחם',
+          ],
+        },
+        sandwiches: {
+          name: 'כריכים',
+          products: [
+            'מחמצת סלק',
+            'מחמצת חצילים',
+            'בריוש פרג קממבר',
+            'כריך בורקס גבינות',
+            'כריך קרואסון חמאה',
+            'כריך בייגל',
+            "כריך פוקאצ'ה",
+          ],
+        },
+        shelf: {
+          name: 'מוצרי מדף',
+          products: ['עוגת שמרים', 'חלות', 'בחושות'],
+        },
+        whole_cakes: {
+          name: 'עוגות שלמות',
+          products: [
+            "פס פאדג' מסקרפונה",
+            'פס רושה אגוזי לוז',
+            'פס מנגו פסיפלורה',
+            'פס קפה פקאן',
+            'טריקולד ק.20',
+            'פיסטוק פירות יער ק.20',
+            'גבינה פירורים ק.20',
+            'גבינה אפויה ק.20',
+            'ריבוע רושה אגוזי לוז',
+            'ריבוע קפה פקאן',
+            "פאדג' שוקולד",
+          ],
+        },
+        vitrina: {
+          name: 'קינוחי ויטרינה',
+          products: [
+            "קשיו דולצ'ה",
+            'פיסטוק פירות יער',
+            'פחזנית וניל פטל',
+            'סבלה פקאן',
+            'טארט פירות',
+            'טארט לימון 100%',
+            '100 אחוז שוקולד',
+            'רושה אגוזי לוז',
+            'פריז ברסט',
+            'כדור שוקולד',
+            'פחזנית וניל אישית',
+          ],
+        },
+        cookies: {
+          name: 'עוגיות',
+          products: [
+            'פלורנטין',
+            'קפה שקדים',
+            'שקדים לימון',
+            'פקאן',
+            'בראוניז',
+            'חמאה לוז',
+            'פרמזן',
+            'עוגיות תמרים',
+            'אלפחורס',
+            'פיסטוק לל"ג',
+            'קקאו שוקולד',
+          ],
+        },
+        various: {
+          name: 'מוצרים שונים',
+          products: [
+            'מאפה פטריות',
+            'מאפה גבינה ופירות יער',
+            'עוגת גבינה באסקית',
+            'חלמון מפוסטר',
+            'פרמזן חומר גלם',
+            'שמנת מתוקה',
+            'חמאה',
+            'פיסטוק פירות יער',
+            'פרסבורגר פרג',
+          ],
+        },
+      };
+
+      // Utility Functions
+      function formatDate(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString + 'T00:00:00');
+        if (isNaN(date.getTime())) return '';
+        return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(
+          2,
+          '0'
+        )}/${date.getFullYear()}`;
+      }
+
+      function generateId() {
+        return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+
+      // Custom Select Functions
+      function createCustomSelect(productKey) {
+        const selectId = `select_${productKey}`;
+        // Generate options from 0 to MAX_QUANTITY
+        const options = Array.from({ length: CONFIG.MAX_QUANTITY + 1 }, (_, i) => i);
+
+        return `
+          <div class="custom-select-wrapper" data-select-id="${selectId}">
+            <div class="custom-select-trigger" onclick="toggleSelect('${selectId}')">
+              <span class="select-value" id="${selectId}_value">0</span>
+              <span class="select-arrow">▼</span>
+            </div>
+            <div class="custom-select-dropdown" id="${selectId}_dropdown">
+              <div class="select-search">
+                <input 
+                  type="text" 
+                  placeholder="חיפוש..."
+                  oninput="filterOptions('${selectId}', this.value)"
+                  onclick="event.stopPropagation()"
+                />
+              </div>
+              <div class="select-options" id="${selectId}_options">
+                ${options
+                  .map(
+                    (val) =>
+                      `<div class="select-option" onclick="selectValue('${selectId}', ${val})">${val}</div>`
+                  )
+                  .join('')}
+              </div>
+            </div>
+            <input type="hidden" name="${productKey}_quantity" id="${selectId}_input" value="0" />
+          </div>
+        `;
+      }
+
+      function toggleSelect(selectId) {
+        const dropdown = document.getElementById(`${selectId}_dropdown`);
+        const trigger = dropdown.previousElementSibling;
+        const overlay = document.getElementById('selectOverlay');
+
+        // Close any open select
+        if (State.openSelectId && State.openSelectId !== selectId) {
+          closeSelect(State.openSelectId);
+        }
+
+        const isOpen = dropdown.classList.contains('open');
+
+        if (isOpen) {
+          closeSelect(selectId);
+        } else {
+          dropdown.classList.add('open');
+          trigger.classList.add('open');
+          overlay.classList.add('active');
+          State.openSelectId = selectId;
+
+          // Reset search
+          const searchInput = dropdown.querySelector('input[type="text"]');
+          if (searchInput) {
+            searchInput.value = '';
+            filterOptions(selectId, '');
+          }
+
+          // Scroll to selected value
+          setTimeout(() => {
+            const selectedValue = document.getElementById(`${selectId}_input`).value;
+            const options = dropdown.querySelectorAll('.select-option');
+            options.forEach((opt, idx) => {
+              if (opt.textContent.trim() === selectedValue) {
+                opt.scrollIntoView({ block: 'center' });
+              }
+            });
+          }, 50);
+        }
+      }
+
+      function closeSelect(selectId) {
+        const dropdown = document.getElementById(`${selectId}_dropdown`);
+        const trigger = dropdown.previousElementSibling;
+        const overlay = document.getElementById('selectOverlay');
+
+        dropdown.classList.remove('open');
+        trigger.classList.remove('open');
+        overlay.classList.remove('active');
+        State.openSelectId = null;
+      }
+
+      function selectValue(selectId, value) {
+        document.getElementById(`${selectId}_value`).textContent = value;
+        document.getElementById(`${selectId}_input`).value = value;
+        closeSelect(selectId);
+      }
+
+      function filterOptions(selectId, searchTerm) {
+        const optionsContainer = document.getElementById(`${selectId}_options`);
+        const options = optionsContainer.querySelectorAll('.select-option');
+        let visibleCount = 0;
+
+        options.forEach((option) => {
+          const value = option.textContent;
+          if (value.includes(searchTerm)) {
+            option.classList.remove('hidden');
+            visibleCount++;
+          } else {
+            option.classList.add('hidden');
+          }
+        });
+
+        // Show no results message
+        let noResults = optionsContainer.querySelector('.no-results');
+        if (visibleCount === 0) {
+          if (!noResults) {
+            noResults = document.createElement('div');
+            noResults.className = 'no-results';
+            noResults.textContent = 'לא נמצאו תוצאות';
+            optionsContainer.appendChild(noResults);
+          }
+        } else if (noResults) {
+          noResults.remove();
+        }
+      }
+
+      function quickSet(productKey, amount) {
+        const selectId = `select_${productKey}`;
+        selectValue(selectId, amount);
+      }
+
+      // UI Functions
+      function showMessage(type, text) {
+        const msg = document.getElementById('messageContainer');
+        msg.textContent = text;
+        msg.className = `message ${type} show`;
+        setTimeout(() => msg.classList.remove('show'), type === 'success' ? 3000 : 5000);
+      }
+
+      function showLoading(show) {
+        document.getElementById('loadingOverlay').classList.toggle('show', show);
+      }
+
+      function toggleCategory(categoryId) {
+        const content = document.getElementById(`${categoryId}-content`);
+        const header = document.querySelector(`[data-category="${categoryId}"]`);
+
+        if (!content || !header) return;
+
+        content.classList.toggle('active');
+        header.classList.toggle('active');
+      }
+
+      // Render Functions
+      function renderProduct(product, categoryKey) {
+        const productKey = PRODUCT_KEYS[product];
+
+        if (!productKey) {
+          console.warn(`No product key mapping found for: ${product}`);
+          return '';
+        }
+
+        return `
+          <div class="product-item">
+            <div class="product-name">${product}</div>
+            <div class="product-controls">
+              ${createCustomSelect(productKey)}
+              <div class="quick-buttons">
+                ${CONFIG.QUICK_AMOUNTS.map(
+                  (amt) =>
+                    `<button type="button" class="quick-btn" onclick="quickSet('${productKey}', ${amt})">${amt}</button>`
+                ).join('')}
+              </div>
+            </div>
+            <textarea 
+              class="notes-field" 
+              name="${productKey}_notes"
+              placeholder="הערות (אופציונלי)"
+              rows="2"
+            ></textarea>
+          </div>
+        `;
+      }
+
+      function renderCategory(categoryKey, categoryData) {
+        return `
+          <section class="category-card">
+            <div 
+              class="category-header" 
+              data-category="${categoryKey}"
+              onclick="toggleCategory('${categoryKey}')"
+              role="button"
+              tabindex="0"
+            >
+              <span>${categoryData.name}</span>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="category-count">${categoryData.products.length}</span>
+                <span class="category-arrow">▼</span>
+              </div>
+            </div>
+            <div class="category-content" id="${categoryKey}-content">
+              <div class="category-body">
+                ${categoryData.products.map((p) => renderProduct(p, categoryKey)).join('')}
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderCustomCategory() {
+        return `
+          <section class="category-card">
+            <div 
+              class="category-header" 
+              data-category="custom"
+              onclick="toggleCategory('custom')"
+              role="button"
+              tabindex="0"
+            >
+              <span>אחרים</span>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="category-count" id="customCount">0</span>
+                <span class="category-arrow">▼</span>
+              </div>
+            </div>
+            <div class="category-content" id="custom-content">
+              <div class="category-body">
+                <div id="customProductsList"></div>
+                <button type="button" class="add-custom-btn" onclick="addCustomProduct()">
+                  + הוסף מוצר מותאם אישית
+                </button>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function addCustomProduct() {
+        const counter = ++State.customProductCounter;
+        const container = document.getElementById('customProductsList');
+        const productKey = `custom_${counter}`;
+
+        const html = `
+          <div class="custom-product" id="custom_product_${counter}">
+            <div class="custom-header">
+              <span class="custom-label">מוצר #${counter}</span>
+              <button type="button" class="remove-btn" onclick="removeCustomProduct(${counter})">
+                הסר
+              </button>
+            </div>
+            <input 
+              type="text" 
+              class="custom-name-input" 
+              name="custom_product_name_${counter}"
+              placeholder="שם המוצר"
+              required
+            />
+            <div class="product-controls">
+              ${createCustomSelect(productKey)}
+              <div class="quick-buttons">
+                ${CONFIG.QUICK_AMOUNTS.map(
+                  (amt) =>
+                    `<button type="button" class="quick-btn" onclick="quickSet('${productKey}', ${amt})">${amt}</button>`
+                ).join('')}
+              </div>
+            </div>
+            <textarea 
+              class="notes-field" 
+              name="custom_product_notes_${counter}"
+              placeholder="הערות (אופציונלי)"
+              rows="2"
+            ></textarea>
+          </div>
+        `;
+
+        container.insertAdjacentHTML('beforeend', html);
+        document.getElementById('customCount').textContent = State.customProductCounter;
+
+        const content = document.getElementById('custom-content');
+        const header = document.querySelector('[data-category="custom"]');
+        if (content && header) {
+          content.classList.add('active');
+          header.classList.add('active');
+        }
+
+        setTimeout(() => {
+          const input = document.querySelector(`input[name="custom_product_name_${counter}"]`);
+          if (input) {
+            input.focus();
+            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+
+      function removeCustomProduct(counter) {
+        const element = document.getElementById(`custom_product_${counter}`);
+        if (element) {
+          element.remove();
+          const remaining = document.querySelectorAll('.custom-product').length;
+          document.getElementById('customCount').textContent = remaining;
+        }
+      }
+
+      // Data Collection
+      function collectFormData(form) {
+        const formData = new FormData(form);
+        const data = {
+          submission_id: generateId(),
+          timestamp: new Date().toISOString(),
+          delivery_date: formatDate(formData.get('deliveryDate')),
+          certificate_number: formData.get('certificateNumber') || '',
+          filler_name: formData.get('fillerName') || '',
+          products: [],
+        };
+
+        // Regular products
+        Object.entries(CATEGORIES).forEach(([categoryKey, categoryData]) => {
+          categoryData.products.forEach((productName) => {
+            const productKey = PRODUCT_KEYS[productName];
+
+            if (!productKey) {
+              console.warn(`No mapping for product: ${productName}`);
+              return;
+            }
+
+            const quantity = formData.get(`${productKey}_quantity`) || '0';
+            const notes = formData.get(`${productKey}_notes`) || '';
+
+            if (quantity !== '0' || notes) {
+              data.products.push({
+                key: productKey,
+                name: productName,
+                category: categoryData.name,
+                quantity: quantity,
+                notes: notes,
+              });
+            }
+          });
+        });
+
+        // Custom products
+        for (let i = 1; i <= State.customProductCounter; i++) {
+          const name = formData.get(`custom_product_name_${i}`);
+          if (name) {
+            const quantity = formData.get(`custom_${i}_quantity`) || '0';
+            const notes = formData.get(`custom_product_notes_${i}`) || '';
+
+            data.products.push({
+              key: `custom_${i}`,
+              name: name,
+              category: 'אחרים',
+              quantity: quantity,
+              notes: notes,
+            });
+          }
+        }
+
+        console.log('Collected data:', data);
+        return data;
+      }
+
+      // API Submission
+      async function submitData(data, attempt = 0) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        try {
+          await fetch(CONFIG.API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+            mode: 'no-cors',
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+          return true;
+        } catch (error) {
+          clearTimeout(timeoutId);
+
+          if (attempt < CONFIG.MAX_RETRIES - 1) {
+            await new Promise((resolve) => setTimeout(resolve, CONFIG.RETRY_DELAY));
+            return submitData(data, attempt + 1);
+          }
+
+          throw error;
+        }
+      }
+
+      // Form Handler
+      async function handleSubmit(event) {
+        event.preventDefault();
+
+        if (State.isSubmitting) return;
+
+        const form = event.target;
+        const submitBtn = document.getElementById('submitBtn');
+
+        try {
+          if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+          }
+
+          State.isSubmitting = true;
+          submitBtn.disabled = true;
+          showLoading(true);
+
+          const data = collectFormData(form);
+          await submitData(data);
+
+          showLoading(false);
+          showMessage('success', '✓ תעודת המשלוח נשלחה בהצלחה! אימייל נשלח לאישור.');
+
+          // Reset form
+          form.reset();
+          setTodayDate();
+
+          // Reset all selects
+          document.querySelectorAll('.select-value').forEach((el) => {
+            el.textContent = '0';
+          });
+          document.querySelectorAll('input[type="hidden"]').forEach((el) => {
+            if (el.name.includes('_quantity')) {
+              el.value = '0';
+            }
+          });
+
+          // Clear custom products
+          document.getElementById('customProductsList').innerHTML = '';
+          State.customProductCounter = 0;
+          document.getElementById('customCount').textContent = '0';
+
+          // Close all categories
+          document.querySelectorAll('.category-content.active').forEach((el) => {
+            el.classList.remove('active');
+          });
+          document.querySelectorAll('.category-header.active').forEach((el) => {
+            el.classList.remove('active');
+          });
+
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (error) {
+          console.error('Submission error:', error);
+          showLoading(false);
+          showMessage('error', '✗ אירעה שגיאה. אנא נסה שוב.');
+        } finally {
+          State.isSubmitting = false;
+          submitBtn.disabled = false;
+        }
+      }
+
+      // Initialize
+      function setTodayDate() {
+        const today = new Date().toISOString().split('T')[0];
+        const dateInput = document.getElementById('deliveryDate');
+        if (dateInput) dateInput.value = today;
+      }
+
+      function initializeApp() {
+        // Render categories
+        const container = document.getElementById('categoriesContainer');
+        let html = '';
+
+        Object.entries(CATEGORIES).forEach(([key, data]) => {
+          html += renderCategory(key, data);
+        });
+
+        html += renderCustomCategory();
+        container.innerHTML = html;
+
+        setTodayDate();
+
+        // Attach handlers
+        const form = document.getElementById('deliveryForm');
+        if (form) form.addEventListener('submit', handleSubmit);
+
+        // Close dropdown on overlay click
+        document.getElementById('selectOverlay').addEventListener('click', () => {
+          if (State.openSelectId) {
+            closeSelect(State.openSelectId);
+          }
+        });
+
+        // Keyboard support
+        document.querySelectorAll('.category-header').forEach((header) => {
+          header.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              header.click();
+            }
+          });
+        });
+
+        console.log('Zuza Patisserie - Form Ready');
+        console.log('Product mappings loaded:', Object.keys(PRODUCT_KEYS).length);
+        console.log('API URL:', CONFIG.API_URL);
+      }
+
+      // Global functions
+      window.toggleCategory = toggleCategory;
+      window.toggleSelect = toggleSelect;
+      window.selectValue = selectValue;
+      window.filterOptions = filterOptions;
+      window.quickSet = quickSet;
+      window.addCustomProduct = addCustomProduct;
+      window.removeCustomProduct = removeCustomProduct;
+
+      // Start
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeApp);
+      } else {
+        initializeApp();
+      }
+
+      // Prevent data loss
+      window.addEventListener('beforeunload', (e) => {
+        if (State.isSubmitting) {
+          e.preventDefault();
+          e.returnValue = '';
+        }
+      });
+    </script>
+  </body>
+</html>
