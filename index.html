@@ -707,7 +707,7 @@
       // Configuration
       const CONFIG = {
         API_URL:
-          'https://script.google.com/macros/s/AKfycby9XuDZNq2mAIDSktKx6Yrc6e6hdrW51Z393zVWE4IBhdi5mplk-9NNFnet6l8ggsY5bw/exec',
+          'https://script.google.com/macros/s/AKfycbyzbgbPJF-Azh3g29ms5oRq9zSnoT1NKtFzuCKF4VjLxzj9GlK6TThgANRuaWhFIJ7IGA/exec',
         MAX_QUANTITY: 50,
         QUICK_AMOUNTS: [2, 4, 5, 10], // Quick buttons - excludes 1
         MAX_RETRIES: 3,
@@ -814,7 +814,7 @@
         'פרמזן חומר גלם': 'various_parmesan_raw',
         'שמנת מתוקה': 'various_sweet_cream',
         חמאה: 'various_butter',
-        'פיסטוק פירות יער': 'various_pistachio_berry',
+        'פס פיסטוק פירות יער': 'various_pistachio_berry_strip',
         'פרסבורגר פרג': 'various_pressburger_poppy',
       };
 
@@ -930,7 +930,7 @@
             'פרמזן חומר גלם',
             'שמנת מתוקה',
             'חמאה',
-            'פיסטוק פירות יער',
+            'פס פיסטוק פירות יער',
             'פרסבורגר פרג',
           ],
         },
@@ -1310,7 +1310,7 @@
       // API Submission
       async function submitData(data, attempt = 0) {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
 
         try {
           await fetch(CONFIG.API_URL, {
@@ -1327,6 +1327,7 @@
           clearTimeout(timeoutId);
 
           if (attempt < CONFIG.MAX_RETRIES - 1) {
+            console.error(`Submission attempt ${attempt + 1} failed:`, error);
             await new Promise((resolve) => setTimeout(resolve, CONFIG.RETRY_DELAY));
             return submitData(data, attempt + 1);
           }
