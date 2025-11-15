@@ -216,18 +216,32 @@
         opacity: 0.5;
         cursor: not-allowed;
       }
-      .loading {
-        text-align: center;
-        padding: 60px 20px;
+
+      /* Loading Overlay */
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(26, 47, 47, 0.95);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        flex-direction: column;
+      }
+      .loading-overlay.show {
+        display: flex;
       }
       .spinner {
-        border: 4px solid #f3f3f3;
+        border: 4px solid rgba(196, 165, 117, 0.3);
         border-top: 4px solid #c4a575;
         border-radius: 50%;
         width: 50px;
         height: 50px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 20px;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 20px;
       }
       @keyframes spin {
         0% {
@@ -236,6 +250,22 @@
         100% {
           transform: rotate(360deg);
         }
+      }
+      .loading-text {
+        color: #c4a575;
+        font-size: 18px;
+        font-weight: 600;
+        text-align: center;
+      }
+      .loading-subtext {
+        color: rgba(196, 165, 117, 0.8);
+        font-size: 14px;
+        margin-top: 10px;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 60px 20px;
       }
       .error {
         background: #ffebee;
@@ -267,12 +297,18 @@
         }
         .btn {
           width: 100%;
-          justify-content: center;
         }
       }
     </style>
   </head>
   <body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <div class="loading-text">מעבד את האישור...</div>
+      <div class="loading-subtext">אנא המתן, זה עשוי לקחת מספר שניות</div>
+    </div>
+
     <div class="container">
       <div class="header">
         <div class="brand">Zuza</div>
@@ -280,9 +316,11 @@
         <div class="header-title">אישור תעודת משלוח</div>
       </div>
 
-      <div id="loadingState" class="loading">
-        <div class="spinner"></div>
-        <p>טוען נתונים...</p>
+      <div id="loadingState">
+        <div class="loading">
+          <div class="spinner"></div>
+          <p style="color: #666; font-size: 16px">טוען נתונים...</p>
+        </div>
       </div>
 
       <div id="errorState" style="display: none"></div>
@@ -292,43 +330,38 @@
           <div class="info-grid">
             <div class="info-item">
               <div class="info-label">תאריך ושעה</div>
-              <div class="info-value" id="deliveryDateTime"></div>
+              <div class="info-value" id="deliveryDateTime">-</div>
             </div>
             <div class="info-item">
               <div class="info-label">מספר תעודה</div>
-              <div class="info-value" id="certNumber"></div>
+              <div class="info-value" id="certNumber">-</div>
             </div>
             <div class="info-item">
               <div class="info-label">ממלא התעודה</div>
-              <div class="info-value" id="fillerName"></div>
+              <div class="info-value" id="fillerName">-</div>
             </div>
             <div class="info-item">
               <div class="info-label">סה"כ מוצרים</div>
-              <div class="info-value" id="totalProducts"></div>
+              <div class="info-value" id="totalProducts">-</div>
             </div>
           </div>
         </div>
 
         <div class="content">
           <div class="instruction">
-            <h2>הוראות אישור</h2>
+            <h2>🔍 בדוק והתאם כמויות</h2>
             <p>
-              <strong>אישור מלא:</strong> אם כל המוצרים הגיעו במלואם, לחץ על "אישור מלא".<br />
-              <strong>אישור עם שינויים:</strong> ערוך כמויות ולחץ על "אישור עם שינויים".
+              עבור על המוצרים ובדוק שהכמויות תואמות למה שהתקבל בפועל. אם הכל תואם - לחץ על "אישור
+              מלא". אם יש הבדלים - שנה את הכמויות ולחץ "אישור עם שינויים".
             </p>
           </div>
+
           <div id="productsContainer"></div>
         </div>
 
         <div class="actions">
-          <button class="btn btn-confirm" id="btnFullConfirm">
-            <span>✓</span>
-            אישור מלא - כל המוצרים הגיעו
-          </button>
-          <button class="btn btn-custom" id="btnCustomConfirm">
-            <span>📝</span>
-            אישור עם שינויים
-          </button>
+          <button class="btn btn-confirm" id="btnFullConfirm">✓ אישור מלא</button>
+          <button class="btn btn-custom" id="btnCustomConfirm">📝 אישור עם שינויים</button>
         </div>
       </div>
 
@@ -342,10 +375,11 @@
 
     <script>
       const SCRIPT_URL =
-        'https://script.google.com/macros/s/AKfycbyzbgbPJF-Azh3g29ms5oRq9zSnoT1NKtFzuCKF4VjLxzj9GlK6TThgANRuaWhFIJ7IGA/exec';
+        'https://script.google.com/macros/s/AKfycbwqXGHmyh32lienABf3sCbgte8QbxNc7T6HrKFfLwmJXxGuuKV7uSbeM2okohN6aDJ9Hw/exec';
 
       let deliveryData = null;
       let originalQuantities = {};
+      let isSubmitting = false;
 
       function getUrlParams() {
         const params = new URLSearchParams(window.location.search);
@@ -356,21 +390,32 @@
       }
 
       function formatDateTime(submissionTime) {
-        // submissionTime is expected in format: DD/MM/YYYY HH:MM
-        if (submissionTime && submissionTime.includes(':')) {
-          return submissionTime;
+        // submissionTime should be in format: DD/MM/YYYY HH:MM
+        console.log('Formatting time:', submissionTime);
+
+        if (submissionTime && typeof submissionTime === 'string') {
+          // If it's already in DD/MM/YYYY HH:MM format, return as is
+          if (submissionTime.match(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/)) {
+            return submissionTime;
+          }
         }
-        // Fallback to current Israeli time if not available
-        return new Date()
-          .toLocaleString('he-IL', {
-            timeZone: 'Asia/Jerusalem',
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-          .replace(',', '');
+
+        // Fallback: generate current Israeli time
+        try {
+          const now = new Date();
+          const israelTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+
+          const day = String(israelTime.getDate()).padStart(2, '0');
+          const month = String(israelTime.getMonth() + 1).padStart(2, '0');
+          const year = israelTime.getFullYear();
+          const hours = String(israelTime.getHours()).padStart(2, '0');
+          const minutes = String(israelTime.getMinutes()).padStart(2, '0');
+
+          return `${day}/${month}/${year} ${hours}:${minutes}`;
+        } catch (error) {
+          console.error('Error formatting date:', error);
+          return 'לא זמין';
+        }
       }
 
       async function loadDeliveryData() {
@@ -403,6 +448,8 @@
           }
 
           deliveryData = result.data;
+          console.log('Delivery data:', deliveryData);
+          console.log('Submission time:', deliveryData.submission_time);
 
           deliveryData.products.forEach((product) => {
             originalQuantities[product.key] = product.quantity;
@@ -420,6 +467,8 @@
         document.getElementById('mainContent').style.display = 'block';
 
         const dateTime = formatDateTime(deliveryData.submission_time);
+        console.log('Formatted date/time:', dateTime);
+
         document.getElementById('deliveryDateTime').textContent = dateTime;
         document.getElementById('certNumber').textContent = deliveryData.certificate_number;
         document.getElementById('fillerName').textContent = deliveryData.filler_name;
@@ -506,6 +555,8 @@
       }
 
       async function handleFullConfirm() {
+        if (isSubmitting) return;
+
         if (!confirm('האם כל המוצרים הגיעו במלואם?')) {
           return;
         }
@@ -513,6 +564,8 @@
       }
 
       async function handleCustomConfirm() {
+        if (isSubmitting) return;
+
         const changedInputs = document.querySelectorAll('.quantity-input.changed');
 
         if (changedInputs.length === 0) {
@@ -528,11 +581,21 @@
       }
 
       async function submitConfirmation(fullConfirmation) {
+        if (isSubmitting) {
+          console.log('Already submitting, ignoring duplicate request');
+          return;
+        }
+
+        isSubmitting = true;
+
         try {
           const btnFull = document.getElementById('btnFullConfirm');
           const btnCustom = document.getElementById('btnCustomConfirm');
           btnFull.disabled = true;
           btnCustom.disabled = true;
+
+          // Show loading overlay
+          document.getElementById('loadingOverlay').classList.add('show');
 
           const params = getUrlParams();
 
@@ -553,7 +616,10 @@
             confirmed_products: confirmedProducts,
           };
 
-          console.log('Submitting:', confirmationData);
+          console.log('Submitting confirmation:', confirmationData);
+
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
           const response = await fetch(SCRIPT_URL, {
             method: 'POST',
@@ -563,20 +629,32 @@
             },
             body: JSON.stringify(confirmationData),
             redirect: 'follow',
+            signal: controller.signal,
           });
 
-          // With no-cors, we can't read the response, but if no error is thrown, it succeeded
-          console.log('Request sent successfully');
+          clearTimeout(timeoutId);
+          console.log('Request completed');
+
+          // Hide loading overlay
+          document.getElementById('loadingOverlay').classList.remove('show');
 
           // Show success
           document.getElementById('mainContent').style.display = 'none';
           document.getElementById('successState').style.display = 'block';
         } catch (error) {
           console.error('Error:', error);
-          alert(`שגיאה: ${error.message}\n\nנסה שנית או פנה לתמיכה.`);
+          document.getElementById('loadingOverlay').classList.remove('show');
+
+          if (error.name === 'AbortError') {
+            alert('הבקשה ארכה יותר מדי. ייתכן שהאישור עבר בהצלחה - נא לבדוק עם המנהל.');
+          } else {
+            alert(`שגיאה: ${error.message}\n\nנסה שנית או פנה לתמיכה.`);
+          }
 
           document.getElementById('btnFullConfirm').disabled = false;
           document.getElementById('btnCustomConfirm').disabled = false;
+        } finally {
+          isSubmitting = false;
         }
       }
 
@@ -588,6 +666,14 @@
       }
 
       window.addEventListener('DOMContentLoaded', loadDeliveryData);
+
+      // Prevent accidental page unload during submission
+      window.addEventListener('beforeunload', (e) => {
+        if (isSubmitting) {
+          e.preventDefault();
+          e.returnValue = '';
+        }
+      });
     </script>
   </body>
 </html>
