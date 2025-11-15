@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Zuza Patisserie - אישור משלוח</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      :root {
+        --dark-green: #1a2f2f;
+        --gold: #c4a575;
+        --light-bg: #fafafa;
+        --white: #ffffff;
+        --text: #333333;
+        --text-light: #666666;
+        --border: #e0e0e0;
+        --success: #4caf50;
+        --error: #f44336;
+        --warning: #ff9800;
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.15);
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        background: var(--light-bg);
+        color: var(--text);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      .header {
+        background: var(--dark-green);
+        padding: 20px;
+        text-align: center;
+      }
+
+      .logo-text {
+        font-size: 36px;
+        font-style: italic;
+        color: var(--gold);
+        font-family: Georgia, serif;
+        margin: 0;
+        line-height: 1;
+      }
+
+      .logo-subtitle {
+        font-size: 11px;
+        letter-spacing: 3px;
+        color: var(--white);
+        margin-top: 4px;
+        font-weight: 300;
+      }
+
+      .header-title {
+        font-size: 16px;
+        color: var(--gold);
+        font-weight: 400;
+        margin: 8px 0 0 0;
+      }
+
+      .main-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 16px;
+        padding-bottom: 180px;
+      }
+
+      .info-card {
+        background: var(--white);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: var(--shadow);
+      }
+
+      .info-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--dark-green);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .info-row:last-child {
+        border-bottom: none;
+      }
+
+      .info-label {
+        font-weight: 600;
+        color: var(--text-light);
+      }
+
+      .info-value {
+        font-weight: 700;
+        color: var(--dark-green);
+      }
+
+      .approval-section {
+        background: #f0f8f0;
+        border: 2px solid var(--success);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        text-align: center;
+      }
+
+      .approval-checkbox {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin: 20px 0;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .approval-checkbox input[type='checkbox'] {
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+      }
+
+      .approval-checkbox label {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--dark-green);
+        cursor: pointer;
+      }
+
+      .approval-text {
+        font-size: 14px;
+        color: var(--text-light);
+        margin-top: 10px;
+      }
+
+      .category-card {
+        background: var(--white);
+        border-radius: 12px;
+        margin-bottom: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+      }
+
+      .category-header {
+        background: var(--dark-green);
+        color: var(--gold);
+        padding: 16px 20px;
+        font-size: 16px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .category-badge {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .category-count {
+        background: var(--gold);
+        color: var(--dark-green);
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .category-arrow {
+        font-size: 12px;
+        transition: transform 0.3s;
+      }
+
+      .category-header.active .category-arrow {
+        transform: rotate(180deg);
+      }
+
+      .category-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+
+      .category-content.active {
+        max-height: 10000px;
+      }
+
+      .category-body {
+        padding: 16px;
+      }
+
+      .product-item {
+        background: var(--light-bg);
+        border-radius: 8px;
+        padding: 14px;
+        margin-bottom: 10px;
+        border: 2px solid transparent;
+        transition: border-color 0.2s;
+      }
+
+      .product-item.modified {
+        border-color: var(--warning);
+        background: #fff9f0;
+      }
+
+      .product-item:last-child {
+        margin-bottom: 0;
+      }
+
+      .product-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 10px;
+      }
+
+      .product-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .original-badge {
+        background: var(--text-light);
+        color: var(--white);
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .quantity-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .quantity-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-light);
+        min-width: 80px;
+      }
+
+      .quantity-input-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+      }
+
+      .quantity-btn {
+        width: 40px;
+        height: 40px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        background: var(--white);
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--dark-green);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      }
+
+      .quantity-btn:active {
+        background: var(--dark-green);
+        color: var(--gold);
+        border-color: var(--dark-green);
+      }
+
+      .quantity-input {
+        flex: 1;
+        padding: 10px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 700;
+        text-align: center;
+        background: var(--white);
+        max-width: 100px;
+      }
+
+      .quantity-input:focus {
+        outline: none;
+        border-color: var(--gold);
+      }
+
+      .product-notes {
+        font-size: 13px;
+        color: var(--text-light);
+        font-style: italic;
+        margin-top: 8px;
+        padding: 8px;
+        background: var(--white);
+        border-radius: 6px;
+      }
+
+      .change-indicator {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+        padding: 8px;
+        background: var(--warning);
+        color: var(--white);
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .submit-section {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 16px;
+        background: var(--white);
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+        z-index: 999;
+      }
+
+      .submit-container {
+        max-width: 800px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .changes-summary {
+        background: #fff9f0;
+        border: 2px solid var(--warning);
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--dark-green);
+        text-align: center;
+        display: none;
+      }
+
+      .changes-summary.show {
+        display: block;
+      }
+
+      .submit-btn {
+        width: 100%;
+        padding: 16px;
+        background: var(--success);
+        color: var(--white);
+        border: none;
+        border-radius: 12px;
+        font-size: 17px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: opacity 0.2s;
+      }
+
+      .submit-btn:active {
+        opacity: 0.9;
+      }
+
+      .submit-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .submit-btn.all-good {
+        background: var(--success);
+      }
+
+      .submit-btn.with-changes {
+        background: var(--warning);
+      }
+
+      .message {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 16px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        z-index: 10000;
+        max-width: 90%;
+        text-align: center;
+        box-shadow: var(--shadow-lg);
+        display: none;
+      }
+
+      .message.show {
+        display: block;
+        animation: slideDown 0.3s ease;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateX(-50%) translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+
+      .message.success {
+        background: var(--success);
+        color: var(--white);
+      }
+
+      .message.error {
+        background: var(--error);
+        color: var(--white);
+      }
+
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(26, 47, 47, 0.95);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 10001;
+      }
+
+      .loading-overlay.show {
+        display: flex;
+      }
+
+      .loading-content {
+        text-align: center;
+        color: var(--gold);
+      }
+
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(196, 165, 117, 0.3);
+        border-top-color: var(--gold);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .loading-text {
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .error-container {
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 20px;
+        background: var(--white);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        text-align: center;
+      }
+
+      .error-icon {
+        font-size: 48px;
+        color: var(--error);
+        margin-bottom: 16px;
+      }
+
+      .error-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--dark-green);
+        margin-bottom: 12px;
+      }
+
+      .error-message {
+        font-size: 14px;
+        color: var(--text-light);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <div class="loading-text">טוען נתונים...</div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="messageContainer" class="message"></div>
+
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-container">
+        <h1 class="logo-text">Zuza</h1>
+        <div class="logo-subtitle">PATISSERIE</div>
+      </div>
+      <p class="header-title">אישור משלוח</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container" id="mainContent">
+      <!-- Content will be loaded here -->
+    </main>
+
+    <!-- Submit Section -->
+    <div class="submit-section" id="submitSection" style="display: none">
+      <div class="submit-container">
+        <div class="changes-summary" id="changesSummary"></div>
+        <button type="button" class="submit-btn" id="submitBtn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+          <span id="submitBtnText">אישור - הכל הגיע במלואו</span>
+        </button>
+      </div>
+    </div>
+
+    <script>
+      // Configuration
+      const CONFIG = {
+        API_URL:
+          'https://script.google.com/macros/s/AKfycbxrKU2hNqe5xavBhsOL10-NkmWqXwpQswawyQ3ndOcyQ3w24zkJSr543766_6TQs0QrUA/exec',
+      };
+
+      // State
+      const State = {
+        token: null,
+        day: null,
+        submissionId: null,
+        originalData: null,
+        currentData: null,
+        allGoodChecked: false,
+        modifications: {},
+      };
+
+      // Utility Functions
+      function getUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        return {
+          token: params.get('token'),
+          day: params.get('day'),
+          sid: params.get('sid'),
+        };
+      }
+
+      function showMessage(type, text) {
+        const msg = document.getElementById('messageContainer');
+        msg.textContent = text;
+        msg.className = `message ${type} show`;
+        setTimeout(() => msg.classList.remove('show'), type === 'success' ? 3000 : 5000);
+      }
+
+      function showLoading(show) {
+        document.getElementById('loadingOverlay').classList.toggle('show', show);
+        const loadingText = document.querySelector('.loading-text');
+        if (loadingText && !show) {
+          loadingText.textContent = 'טוען נתונים...';
+        }
+      }
+
+      function setLoadingText(text) {
+        const loadingText = document.querySelector('.loading-text');
+        if (loadingText) {
+          loadingText.textContent = text;
+        }
+      }
+
+      // API Functions
+      async function fetchDeliveryData(token, day, submissionId) {
+        try {
+          const url = `${CONFIG.API_URL}?action=getDelivery&token=${encodeURIComponent(
+            token
+          )}&day=${encodeURIComponent(day)}&sid=${encodeURIComponent(submissionId)}`;
+
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          return data;
+        } catch (error) {
+          console.error('Fetch error:', error);
+          throw error;
+        }
+      }
+
+      async function submitConfirmation(allGood, changes) {
+        try {
+          const payload = {
+            action: 'confirmDelivery',
+            token: State.token,
+            day: State.day,
+            submissionId: State.submissionId,
+            allGood: allGood,
+            changes: changes,
+          };
+
+          const response = await fetch(CONFIG.API_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+            mode: 'no-cors',
+          });
+
+          return true;
+        } catch (error) {
+          console.error('Submit error:', error);
+          throw error;
+        }
+      }
+
+      // UI Rendering Functions
+      function renderError(title, message) {
+        const html = `
+          <div class="error-container">
+            <div class="error-icon">⚠️</div>
+            <div class="error-title">${title}</div>
+            <div class="error-message">${message}</div>
+          </div>
+        `;
+        document.getElementById('mainContent').innerHTML = html;
+      }
+
+      function renderDeliveryInfo(data) {
+        return `
+          <section class="info-card">
+            <h2 class="info-title">
+              <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              פרטי המשלוח
+            </h2>
+            <div class="info-row">
+              <span class="info-label">תאריך משלוח:</span>
+              <span class="info-value">${data.delivery_date}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">מספר תעודה:</span>
+              <span class="info-value">${data.certificate_number || 'לא צוין'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">ממלא התעודה:</span>
+              <span class="info-value">${data.filler_name}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">סה"כ מוצרים:</span>
+              <span class="info-value">${data.products.length}</span>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderApprovalSection() {
+        return `
+          <section class="approval-section">
+            <div class="approval-checkbox" onclick="toggleAllGood()">
+              <input type="checkbox" id="allGoodCheckbox" onchange="handleAllGoodChange(this.checked)">
+              <label for="allGoodCheckbox">אישור שהכל הגיע באופן מלא ותקין</label>
+            </div>
+            <p class="approval-text">
+              סמן אם כל המוצרים הגיעו במלואם וברצונך לאשר את המשלוח ללא שינויים
+            </p>
+          </section>
+        `;
+      }
+
+      function renderProducts(data) {
+        // Group products by category
+        const categorized = {};
+        data.products.forEach((product) => {
+          if (!categorized[product.category]) {
+            categorized[product.category] = [];
+          }
+          categorized[product.category].push(product);
+        });
+
+        let html = '';
+        Object.keys(categorized).forEach((category) => {
+          const products = categorized[category];
+          html += `
+            <section class="category-card">
+              <div class="category-header" onclick="toggleCategory('${category}')" data-category="${category}">
+                <span>${category}</span>
+                <div class="category-badge">
+                  <span class="category-count">${products.length}</span>
+                  <span class="category-arrow">▼</span>
+                </div>
+              </div>
+              <div class="category-content" id="category-${category}">
+                <div class="category-body">
+                  ${products.map((p) => renderProduct(p)).join('')}
+                </div>
+              </div>
+            </section>
+          `;
+        });
+
+        return html;
+      }
+
+      function renderProduct(product) {
+        const productId = `product-${product.key}`;
+        const isModified = State.modifications[product.key];
+
+        return `
+          <div class="product-item ${isModified ? 'modified' : ''}" id="${productId}" data-key="${
+          product.key
+        }">
+            <div class="product-header">
+              <div class="product-name">${product.name}</div>
+              <div class="original-badge">מקור: ${product.quantity}</div>
+            </div>
+            <div class="quantity-controls">
+              <span class="quantity-label">כמות מאושרת:</span>
+              <div class="quantity-input-wrapper">
+                <button type="button" class="quantity-btn" onclick="decrementQuantity('${
+                  product.key
+                }')">-</button>
+                <input 
+                  type="number" 
+                  class="quantity-input" 
+                  id="qty-${product.key}"
+                  value="${product.quantity}"
+                  min="0"
+                  onchange="handleQuantityChange('${product.key}', this.value)"
+                  data-original="${product.quantity}"
+                />
+                <button type="button" class="quantity-btn" onclick="incrementQuantity('${
+                  product.key
+                }')">+</button>
+              </div>
+            </div>
+            ${product.notes ? `<div class="product-notes">📝 ${product.notes}</div>` : ''}
+            <div class="change-indicator" id="change-${product.key}" style="display: none;">
+              ⚠️ שונה מהמקור
+            </div>
+          </div>
+        `;
+      }
+
+      // Interaction Functions
+      function toggleCategory(category) {
+        const content = document.getElementById(`category-${category}`);
+        const header = document.querySelector(`[data-category="${category}"]`);
+
+        if (content && header) {
+          content.classList.toggle('active');
+          header.classList.toggle('active');
+        }
+      }
+
+      function toggleAllGood() {
+        const checkbox = document.getElementById('allGoodCheckbox');
+        checkbox.checked = !checkbox.checked;
+        handleAllGoodChange(checkbox.checked);
+      }
+
+      function handleAllGoodChange(checked) {
+        State.allGoodChecked = checked;
+        updateSubmitButton();
+      }
+
+      function incrementQuantity(key) {
+        const input = document.getElementById(`qty-${key}`);
+        const currentValue = parseInt(input.value) || 0;
+        input.value = currentValue + 1;
+        handleQuantityChange(key, input.value);
+      }
+
+      function decrementQuantity(key) {
+        const input = document.getElementById(`qty-${key}`);
+        const currentValue = parseInt(input.value) || 0;
+        if (currentValue > 0) {
+          input.value = currentValue - 1;
+          handleQuantityChange(key, input.value);
+        }
+      }
+
+      function handleQuantityChange(key, newValue) {
+        const input = document.getElementById(`qty-${key}`);
+        const originalValue = parseInt(input.getAttribute('data-original'));
+        const currentValue = parseInt(newValue) || 0;
+
+        const productItem = document.getElementById(`product-${key}`);
+        const changeIndicator = document.getElementById(`change-${key}`);
+
+        if (currentValue !== originalValue) {
+          State.modifications[key] = {
+            original: originalValue,
+            new: currentValue,
+            product: State.currentData.products.find((p) => p.key === key),
+          };
+          productItem.classList.add('modified');
+          changeIndicator.style.display = 'flex';
+
+          // Uncheck "all good" if user makes changes
+          if (State.allGoodChecked) {
+            document.getElementById('allGoodCheckbox').checked = false;
+            State.allGoodChecked = false;
+          }
+        } else {
+          delete State.modifications[key];
+          productItem.classList.remove('modified');
+          changeIndicator.style.display = 'none';
+        }
+
+        updateSubmitButton();
+      }
+
+      function updateSubmitButton() {
+        const submitBtn = document.getElementById('submitBtn');
+        const submitBtnText = document.getElementById('submitBtnText');
+        const changesSummary = document.getElementById('changesSummary');
+        const modificationsCount = Object.keys(State.modifications).length;
+
+        if (State.allGoodChecked) {
+          submitBtn.className = 'submit-btn all-good';
+          submitBtnText.textContent = 'אישור - הכל הגיע במלואו';
+          changesSummary.classList.remove('show');
+        } else if (modificationsCount > 0) {
+          submitBtn.className = 'submit-btn with-changes';
+          submitBtnText.textContent = `שמור שינויים (${modificationsCount} מוצרים)`;
+          changesSummary.textContent = `⚠️ ${modificationsCount} מוצרים שונו`;
+          changesSummary.classList.add('show');
+        } else {
+          submitBtn.className = 'submit-btn all-good';
+          submitBtnText.textContent = 'אישור - הכל הגיע במלואו';
+          changesSummary.classList.remove('show');
+        }
+      }
+
+      async function handleSubmit() {
+        const submitBtn = document.getElementById('submitBtn');
+
+        if (submitBtn.disabled) return;
+
+        const allGood = State.allGoodChecked && Object.keys(State.modifications).length === 0;
+        const changes = Object.values(State.modifications);
+
+        if (!allGood && changes.length === 0) {
+          showMessage('error', 'יש לאשר שהכל תקין או לבצע שינויים');
+          return;
+        }
+
+        try {
+          submitBtn.disabled = true;
+          showLoading(true);
+          setLoadingText('שולח אישור...');
+
+          await submitConfirmation(allGood, changes);
+
+          showLoading(false);
+          showMessage('success', '✓ האישור נשלח בהצלחה! אימייל נשלח לזוזה פטיסרי');
+
+          // Disable further edits
+          setTimeout(() => {
+            document.querySelectorAll('.quantity-input, .quantity-btn').forEach((el) => {
+              el.disabled = true;
+            });
+            document.getElementById('allGoodCheckbox').disabled = true;
+            submitBtn.textContent = '✓ אושר';
+            submitBtn.style.background = '#888';
+          }, 1500);
+        } catch (error) {
+          console.error('Submit error:', error);
+          showLoading(false);
+          showMessage('error', '✗ אירעה שגיאה. אנא נסה שוב.');
+          submitBtn.disabled = false;
+        }
+      }
+
+      // Initialize
+      async function initializeApp() {
+        const params = getUrlParams();
+
+        if (!params.token || !params.day || !params.sid) {
+          renderError('שגיאה בקישור', 'הקישור אינו תקין. אנא השתמש בקישור שקיבלת באימייל.');
+          return;
+        }
+
+        State.token = params.token;
+        State.day = params.day;
+        State.submissionId = params.sid;
+
+        try {
+          showLoading(true);
+          setLoadingText('טוען נתוני משלוח...');
+
+          const data = await fetchDeliveryData(State.token, State.day, State.submissionId);
+
+          State.originalData = JSON.parse(JSON.stringify(data));
+          State.currentData = data;
+
+          showLoading(false);
+
+          // Render UI
+          let html = '';
+          html += renderDeliveryInfo(data);
+          html += renderApprovalSection();
+          html += renderProducts(data);
+
+          document.getElementById('mainContent').innerHTML = html;
+          document.getElementById('submitSection').style.display = 'block';
+
+          // Attach submit handler
+          document.getElementById('submitBtn').addEventListener('click', handleSubmit);
+        } catch (error) {
+          console.error('Initialization error:', error);
+          showLoading(false);
+          renderError(
+            'שגיאה בטעינת הנתונים',
+            error.message || 'לא ניתן לטעון את נתוני המשלוח. אנא נסה שוב מאוחר יותר.'
+          );
+        }
+      }
+
+      // Global functions
+      window.toggleCategory = toggleCategory;
+      window.toggleAllGood = toggleAllGood;
+      window.handleAllGoodChange = handleAllGoodChange;
+      window.incrementQuantity = incrementQuantity;
+      window.decrementQuantity = decrementQuantity;
+      window.handleQuantityChange = handleQuantityChange;
+
+      // Start
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeApp);
+      } else {
+        initializeApp();
+      }
+    </script>
+  </body>
+</html>
