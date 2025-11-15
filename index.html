@@ -707,7 +707,7 @@
       // Configuration
       const CONFIG = {
         API_URL:
-          'https://script.google.com/macros/s/AKfycbzyCsH9rgrlkvFvz30-7YfDiVdGzLR6RCFQ7zw7J5m4CT0efrsctTR6pSaw914vRBbyzQ/exec',
+          'https://script.google.com/macros/s/AKfycbyDEgQ9Ri_NhOISHT12d71S6efYqnHPc_vx2RmCFdpS0pPLpXTC0zthDARjblC1DPWfgw/exec',
         MAX_QUANTITY: 50,
         QUICK_AMOUNTS: [2, 4, 5, 10], // Quick buttons - excludes 1
         MAX_RETRIES: 3,
@@ -1457,9 +1457,17 @@
 
       // Initialize
       function setTodayDate() {
-        const today = new Date().toISOString().split('T')[0];
-        const dateInput = document.getElementById('deliveryDate');
-        if (dateInput) dateInput.value = today;
+        // Get today's date in Israeli timezone
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Jerusalem',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        });
+
+        const israeliDate = formatter.format(now); // Returns YYYY-MM-DD format
+        document.getElementById('deliveryDate').value = israeliDate;
       }
 
       function initializeApp() {
