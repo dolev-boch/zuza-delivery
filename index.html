@@ -478,200 +478,6 @@
         cursor: not-allowed;
       }
 
-      /* Confirmation Modal */
-      .confirmation-modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.7);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-        padding: 20px;
-        overflow-y: auto;
-      }
-
-      .confirmation-modal.show {
-        display: flex;
-      }
-
-      .confirmation-content {
-        background: var(--white);
-        border-radius: 16px;
-        max-width: 600px;
-        width: 100%;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: var(--shadow-lg);
-      }
-
-      .confirmation-header {
-        background: var(--dark-green);
-        color: var(--gold);
-        padding: 20px;
-        text-align: center;
-        border-top-left-radius: 16px;
-        border-top-right-radius: 16px;
-        position: sticky;
-        top: 0;
-        z-index: 1;
-      }
-
-      .confirmation-header h2 {
-        font-size: 22px;
-        margin-bottom: 8px;
-      }
-
-      .confirmation-header p {
-        font-size: 14px;
-        color: rgba(196, 165, 117, 0.8);
-      }
-
-      .confirmation-body {
-        padding: 20px;
-      }
-
-      .confirmation-info {
-        background: var(--light-bg);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 20px;
-      }
-
-      .confirmation-info-row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-        font-size: 15px;
-      }
-
-      .confirmation-info-row:last-child {
-        margin-bottom: 0;
-      }
-
-      .confirmation-info-label {
-        font-weight: 600;
-        color: var(--text);
-      }
-
-      .confirmation-info-value {
-        color: var(--text-light);
-      }
-
-      .confirmation-category {
-        background: var(--white);
-        border: 2px solid var(--border);
-        border-radius: 12px;
-        margin-bottom: 16px;
-        overflow: hidden;
-      }
-
-      .confirmation-category-header {
-        background: var(--dark-green);
-        color: var(--gold);
-        padding: 12px 16px;
-        font-size: 16px;
-        font-weight: 600;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .confirmation-category-items {
-        padding: 12px 16px;
-      }
-
-      .confirmation-product {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        padding: 10px 0;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .confirmation-product:last-child {
-        border-bottom: none;
-      }
-
-      .confirmation-product-info {
-        flex: 1;
-      }
-
-      .confirmation-product-name {
-        font-weight: 600;
-        color: var(--text);
-        font-size: 15px;
-        margin-bottom: 4px;
-      }
-
-      .confirmation-product-notes {
-        font-size: 13px;
-        color: var(--text-light);
-        font-style: italic;
-        margin-top: 4px;
-      }
-
-      .confirmation-product-quantity {
-        background: var(--gold);
-        color: var(--white);
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-weight: 700;
-        font-size: 15px;
-        flex-shrink: 0;
-        margin-right: 12px;
-      }
-
-      .confirmation-total {
-        background: var(--dark-green);
-        color: var(--gold);
-        padding: 16px;
-        border-radius: 12px;
-        text-align: center;
-        font-size: 18px;
-        font-weight: 700;
-        margin-bottom: 20px;
-      }
-
-      .confirmation-buttons {
-        display: flex;
-        gap: 12px;
-        position: sticky;
-        bottom: 0;
-        background: var(--white);
-        padding: 16px 20px;
-        border-top: 2px solid var(--border);
-        margin: 0 -20px -20px -20px;
-      }
-
-      .confirmation-btn {
-        flex: 1;
-        padding: 16px;
-        border: none;
-        border-radius: 12px;
-        font-size: 16px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: opacity 0.2s;
-      }
-
-      .confirmation-btn:active {
-        opacity: 0.8;
-      }
-
-      .confirmation-btn-back {
-        background: var(--border);
-        color: var(--text);
-      }
-
-      .confirmation-btn-confirm {
-        background: var(--success);
-        color: var(--white);
-      }
-
       /* Messages */
       .message {
         position: fixed;
@@ -681,7 +487,7 @@
         padding: 16px 24px;
         border-radius: 12px;
         font-weight: 600;
-        z-index: 10001;
+        z-index: 10000;
         max-width: 90%;
         text-align: center;
         box-shadow: var(--shadow-lg);
@@ -725,7 +531,7 @@
         display: none;
         align-items: center;
         justify-content: center;
-        z-index: 10002;
+        z-index: 10001;
       }
 
       .loading-overlay.show {
@@ -798,25 +604,18 @@
         .quick-btn {
           flex: 0 0 calc(50% - 3px);
         }
-
-        .confirmation-buttons {
-          flex-direction: column;
-        }
       }
 
       /* Scrollbar */
-      .select-options::-webkit-scrollbar,
-      .confirmation-content::-webkit-scrollbar {
+      .select-options::-webkit-scrollbar {
         width: 6px;
       }
 
-      .select-options::-webkit-scrollbar-track,
-      .confirmation-content::-webkit-scrollbar-track {
+      .select-options::-webkit-scrollbar-track {
         background: var(--light-bg);
       }
 
-      .select-options::-webkit-scrollbar-thumb,
-      .confirmation-content::-webkit-scrollbar-thumb {
+      .select-options::-webkit-scrollbar-thumb {
         background: var(--gold);
         border-radius: 3px;
       }
@@ -836,19 +635,6 @@
 
     <!-- Select Overlay -->
     <div class="select-overlay" id="selectOverlay"></div>
-
-    <!-- Confirmation Modal -->
-    <div class="confirmation-modal" id="confirmationModal">
-      <div class="confirmation-content">
-        <div class="confirmation-header">
-          <h2>סיכום תעודת משלוח</h2>
-          <p>אנא וודא שהפרטים נכונים לפני השליחה</p>
-        </div>
-        <div class="confirmation-body" id="confirmationBody">
-          <!-- Content will be populated by JS -->
-        </div>
-      </div>
-    </div>
 
     <!-- Header -->
     <header class="header">
@@ -933,7 +719,6 @@
         customProductCounter: 0,
         isSubmitting: false,
         openSelectId: null,
-        pendingSubmissionData: null,
       };
 
       // PRODUCT KEYS
@@ -1163,7 +948,9 @@
       }
 
       function getIsraeliTime() {
+        // Get current time in Israeli timezone (Asia/Jerusalem)
         const now = new Date();
+
         const formatter = new Intl.DateTimeFormat('en-GB', {
           timeZone: 'Asia/Jerusalem',
           year: 'numeric',
@@ -1180,6 +967,7 @@
           partsMap[part.type] = part.value;
         });
 
+        // Return in format: DD/MM/YYYY HH:MM
         return `${partsMap.day}/${partsMap.month}/${partsMap.year} ${partsMap.hour}:${partsMap.minute}`;
       }
 
@@ -1190,6 +978,7 @@
       // Custom Select Functions
       function createCustomSelect(productKey) {
         const selectId = `select_${productKey}`;
+        // Generate options from 0 to MAX_QUANTITY
         const options = Array.from({ length: CONFIG.MAX_QUANTITY + 1 }, (_, i) => i);
 
         return `
@@ -1226,6 +1015,7 @@
         const trigger = dropdown.previousElementSibling;
         const overlay = document.getElementById('selectOverlay');
 
+        // Close any open select
         if (State.openSelectId && State.openSelectId !== selectId) {
           closeSelect(State.openSelectId);
         }
@@ -1240,16 +1030,18 @@
           overlay.classList.add('active');
           State.openSelectId = selectId;
 
+          // Reset search
           const searchInput = dropdown.querySelector('input[type="text"]');
           if (searchInput) {
             searchInput.value = '';
             filterOptions(selectId, '');
           }
 
+          // Scroll to selected value
           setTimeout(() => {
             const selectedValue = document.getElementById(`${selectId}_input`).value;
             const options = dropdown.querySelectorAll('.select-option');
-            options.forEach((opt) => {
+            options.forEach((opt, idx) => {
               if (opt.textContent.trim() === selectedValue) {
                 opt.scrollIntoView({ block: 'center' });
               }
@@ -1290,6 +1082,7 @@
           }
         });
 
+        // Show no results message
         let noResults = optionsContainer.querySelector('.no-results');
         if (visibleCount === 0) {
           if (!noResults) {
@@ -1329,10 +1122,12 @@
           loadingStartTime = Date.now();
           loadingText.textContent = 'שולח נתונים...';
 
+          // Update message after 5 seconds
           loadingTimer = setTimeout(() => {
             const elapsed = Math.floor((Date.now() - loadingStartTime) / 1000);
             loadingText.textContent = `עדיין מעבד... (${elapsed} שניות)`;
 
+            // Continue updating every 3 seconds
             const updateInterval = setInterval(() => {
               if (!overlay.classList.contains('show')) {
                 clearInterval(updateInterval);
@@ -1359,177 +1154,6 @@
 
         content.classList.toggle('active');
         header.classList.toggle('active');
-      }
-
-      // Confirmation Modal Functions
-      function showConfirmationModal(data) {
-        const modal = document.getElementById('confirmationModal');
-        const body = document.getElementById('confirmationBody');
-
-        const productsByCategory = {};
-        let totalProducts = 0;
-
-        data.products.forEach((product) => {
-          const qty = parseInt(product.quantity) || 0;
-          if (qty > 0 || product.notes) {
-            if (!productsByCategory[product.category]) {
-              productsByCategory[product.category] = [];
-            }
-            productsByCategory[product.category].push(product);
-            totalProducts += qty;
-          }
-        });
-
-        let html = `
-          <div class="confirmation-info">
-            <div class="confirmation-info-row">
-              <span class="confirmation-info-label">תאריך משלוח:</span>
-              <span class="confirmation-info-value">${data.delivery_date}</span>
-            </div>
-            <div class="confirmation-info-row">
-              <span class="confirmation-info-label">מספר תעודה:</span>
-              <span class="confirmation-info-value">${data.certificate_number || 'לא צוין'}</span>
-            </div>
-            <div class="confirmation-info-row">
-              <span class="confirmation-info-label">ממלא התעודה:</span>
-              <span class="confirmation-info-value">${data.filler_name}</span>
-            </div>
-          </div>
-        `;
-
-        if (Object.keys(productsByCategory).length === 0) {
-          html += `
-            <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
-              <p>לא נבחרו מוצרים</p>
-            </div>
-          `;
-        } else {
-          Object.entries(productsByCategory).forEach(([categoryName, products]) => {
-            html += `
-              <div class="confirmation-category">
-                <div class="confirmation-category-header">
-                  <span>${categoryName}</span>
-                  <span class="category-count">${products.length}</span>
-                </div>
-                <div class="confirmation-category-items">
-            `;
-
-            products.forEach((product) => {
-              const qty = parseInt(product.quantity) || 0;
-              html += `
-                <div class="confirmation-product">
-                  <div class="confirmation-product-info">
-                    <div class="confirmation-product-name">${product.name}</div>
-                    ${
-                      product.notes
-                        ? `<div class="confirmation-product-notes">הערה: ${product.notes}</div>`
-                        : ''
-                    }
-                  </div>
-                  <div class="confirmation-product-quantity">${qty}</div>
-                </div>
-              `;
-            });
-
-            html += `
-                </div>
-              </div>
-            `;
-          });
-
-          html += `
-            <div class="confirmation-total">
-              סה"כ מוצרים: ${totalProducts}
-            </div>
-          `;
-        }
-
-        html += `
-          <div class="confirmation-buttons">
-            <button type="button" class="confirmation-btn confirmation-btn-back" onclick="closeConfirmationModal()">
-              חזור לעריכה
-            </button>
-            <button type="button" class="confirmation-btn confirmation-btn-confirm" onclick="confirmSubmission()">
-              ✓ אישור ושליחה
-            </button>
-          </div>
-        `;
-
-        body.innerHTML = html;
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-      }
-
-      function closeConfirmationModal() {
-        const modal = document.getElementById('confirmationModal');
-        modal.classList.remove('show');
-        document.body.style.overflow = '';
-        State.pendingSubmissionData = null;
-      }
-
-      async function confirmSubmission() {
-        if (!State.pendingSubmissionData) return;
-
-        closeConfirmationModal();
-
-        try {
-          State.isSubmitting = true;
-          const submitBtn = document.getElementById('submitBtn');
-          submitBtn.disabled = true;
-          showLoading(true);
-
-          // Add submission timestamp before sending
-          const dataToSend = {
-            ...State.pendingSubmissionData,
-            submission_time: getIsraeliTime(),
-          };
-
-          console.log('Sending data to API:', dataToSend);
-
-          await submitData(dataToSend);
-
-          showLoading(false);
-          showMessage('success', '✓ תעודת המשלוח נשלחה בהצלחה! אימייל נשלח לאישור.');
-
-          // Reset form
-          const form = document.getElementById('deliveryForm');
-          form.reset();
-          setTodayDate();
-
-          // Reset all selects
-          document.querySelectorAll('.select-value').forEach((el) => {
-            el.textContent = '0';
-          });
-          document.querySelectorAll('input[type="hidden"]').forEach((el) => {
-            if (el.name.includes('_quantity')) {
-              el.value = '0';
-            }
-          });
-
-          // Clear custom products
-          document.getElementById('customProductsList').innerHTML = '';
-          State.customProductCounter = 0;
-          document.getElementById('customCount').textContent = '0';
-
-          // Close all categories
-          document.querySelectorAll('.category-content.active').forEach((el) => {
-            el.classList.remove('active');
-          });
-          document.querySelectorAll('.category-header.active').forEach((el) => {
-            el.classList.remove('active');
-          });
-
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        } catch (error) {
-          console.error('Submission error:', error);
-          showLoading(false);
-          showMessage('error', '✗ אירעה שגיאה. אנא נסה שוב.');
-        } finally {
-          State.isSubmitting = false;
-          State.pendingSubmissionData = null;
-          const submitBtn = document.getElementById('submitBtn');
-          submitBtn.disabled = false;
-        }
       }
 
       // Render Functions
@@ -1745,25 +1369,18 @@
         const timeoutId = setTimeout(() => controller.abort(), 45000);
 
         try {
-          const response = await fetch(CONFIG.API_URL, {
+          await fetch(CONFIG.API_URL, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
             mode: 'no-cors',
             signal: controller.signal,
           });
 
           clearTimeout(timeoutId);
-          console.log('Data sent successfully (no-cors mode)');
           return true;
         } catch (error) {
           clearTimeout(timeoutId);
-
-          if (error.name === 'AbortError') {
-            console.error('Request timeout');
-          }
 
           if (attempt < CONFIG.MAX_RETRIES - 1) {
             console.error(`Submission attempt ${attempt + 1} failed:`, error);
@@ -1782,6 +1399,7 @@
         if (State.isSubmitting) return;
 
         const form = event.target;
+        const submitBtn = document.getElementById('submitBtn');
 
         try {
           if (!form.checkValidity()) {
@@ -1789,17 +1407,57 @@
             return;
           }
 
+          State.isSubmitting = true;
+          submitBtn.disabled = true;
+          showLoading(true);
+
           const data = collectFormData(form);
-          State.pendingSubmissionData = data;
-          showConfirmationModal(data);
+          await submitData(data);
+
+          showLoading(false);
+          showMessage('success', '✓ תעודת המשלוח נשלחה בהצלחה! אימייל נשלח לאישור.');
+
+          // Reset form
+          form.reset();
+          setTodayDate();
+
+          // Reset all selects
+          document.querySelectorAll('.select-value').forEach((el) => {
+            el.textContent = '0';
+          });
+          document.querySelectorAll('input[type="hidden"]').forEach((el) => {
+            if (el.name.includes('_quantity')) {
+              el.value = '0';
+            }
+          });
+
+          // Clear custom products
+          document.getElementById('customProductsList').innerHTML = '';
+          State.customProductCounter = 0;
+          document.getElementById('customCount').textContent = '0';
+
+          // Close all categories
+          document.querySelectorAll('.category-content.active').forEach((el) => {
+            el.classList.remove('active');
+          });
+          document.querySelectorAll('.category-header.active').forEach((el) => {
+            el.classList.remove('active');
+          });
+
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         } catch (error) {
-          console.error('Form handling error:', error);
+          console.error('Submission error:', error);
+          showLoading(false);
           showMessage('error', '✗ אירעה שגיאה. אנא נסה שוב.');
+        } finally {
+          State.isSubmitting = false;
+          submitBtn.disabled = false;
         }
       }
 
       // Initialize
       function setTodayDate() {
+        // Get today's date in Israeli timezone
         const now = new Date();
         const formatter = new Intl.DateTimeFormat('en-CA', {
           timeZone: 'Asia/Jerusalem',
@@ -1808,11 +1466,12 @@
           day: '2-digit',
         });
 
-        const israeliDate = formatter.format(now);
+        const israeliDate = formatter.format(now); // Returns YYYY-MM-DD format
         document.getElementById('deliveryDate').value = israeliDate;
       }
 
       function initializeApp() {
+        // Render categories
         const container = document.getElementById('categoriesContainer');
         let html = '';
 
@@ -1825,15 +1484,18 @@
 
         setTodayDate();
 
+        // Attach handlers
         const form = document.getElementById('deliveryForm');
         if (form) form.addEventListener('submit', handleSubmit);
 
+        // Close dropdown on overlay click
         document.getElementById('selectOverlay').addEventListener('click', () => {
           if (State.openSelectId) {
             closeSelect(State.openSelectId);
           }
         });
 
+        // Keyboard support
         document.querySelectorAll('.category-header').forEach((header) => {
           header.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -1856,8 +1518,6 @@
       window.quickSet = quickSet;
       window.addCustomProduct = addCustomProduct;
       window.removeCustomProduct = removeCustomProduct;
-      window.closeConfirmationModal = closeConfirmationModal;
-      window.confirmSubmission = confirmSubmission;
 
       // Start
       if (document.readyState === 'loading') {
