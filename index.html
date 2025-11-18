@@ -1163,9 +1163,7 @@
       }
 
       function getIsraeliTime() {
-        // Get current time in Israeli timezone (Asia/Jerusalem)
         const now = new Date();
-
         const formatter = new Intl.DateTimeFormat('en-GB', {
           timeZone: 'Asia/Jerusalem',
           year: 'numeric',
@@ -1182,7 +1180,6 @@
           partsMap[part.type] = part.value;
         });
 
-        // Return in format: DD/MM/YYYY HH:MM
         return `${partsMap.day}/${partsMap.month}/${partsMap.year} ${partsMap.hour}:${partsMap.minute}`;
       }
 
@@ -1193,7 +1190,6 @@
       // Custom Select Functions
       function createCustomSelect(productKey) {
         const selectId = `select_${productKey}`;
-        // Generate options from 0 to MAX_QUANTITY
         const options = Array.from({ length: CONFIG.MAX_QUANTITY + 1 }, (_, i) => i);
 
         return `
@@ -1230,7 +1226,6 @@
         const trigger = dropdown.previousElementSibling;
         const overlay = document.getElementById('selectOverlay');
 
-        // Close any open select
         if (State.openSelectId && State.openSelectId !== selectId) {
           closeSelect(State.openSelectId);
         }
@@ -1245,18 +1240,16 @@
           overlay.classList.add('active');
           State.openSelectId = selectId;
 
-          // Reset search
           const searchInput = dropdown.querySelector('input[type="text"]');
           if (searchInput) {
             searchInput.value = '';
             filterOptions(selectId, '');
           }
 
-          // Scroll to selected value
           setTimeout(() => {
             const selectedValue = document.getElementById(`${selectId}_input`).value;
             const options = dropdown.querySelectorAll('.select-option');
-            options.forEach((opt, idx) => {
+            options.forEach((opt) => {
               if (opt.textContent.trim() === selectedValue) {
                 opt.scrollIntoView({ block: 'center' });
               }
@@ -1297,7 +1290,6 @@
           }
         });
 
-        // Show no results message
         let noResults = optionsContainer.querySelector('.no-results');
         if (visibleCount === 0) {
           if (!noResults) {
@@ -1337,12 +1329,10 @@
           loadingStartTime = Date.now();
           loadingText.textContent = 'שולח נתונים...';
 
-          // Update message after 5 seconds
           loadingTimer = setTimeout(() => {
             const elapsed = Math.floor((Date.now() - loadingStartTime) / 1000);
             loadingText.textContent = `עדיין מעבד... (${elapsed} שניות)`;
 
-            // Continue updating every 3 seconds
             const updateInterval = setInterval(() => {
               if (!overlay.classList.contains('show')) {
                 clearInterval(updateInterval);
@@ -1376,7 +1366,6 @@
         const modal = document.getElementById('confirmationModal');
         const body = document.getElementById('confirmationBody');
 
-        // Group products by category
         const productsByCategory = {};
         let totalProducts = 0;
 
@@ -1391,7 +1380,6 @@
           }
         });
 
-        // Build HTML
         let html = `
           <div class="confirmation-info">
             <div class="confirmation-info-row">
@@ -1409,7 +1397,6 @@
           </div>
         `;
 
-        // Check if there are any products
         if (Object.keys(productsByCategory).length === 0) {
           html += `
             <div style="text-align: center; padding: 40px 20px; color: var(--text-light);">
@@ -1417,10 +1404,7 @@
             </div>
           `;
         } else {
-          // Add products by category
           Object.entries(productsByCategory).forEach(([categoryName, products]) => {
-            const categoryTotal = products.reduce((sum, p) => sum + (parseInt(p.quantity) || 0), 0);
-
             html += `
               <div class="confirmation-category">
                 <div class="confirmation-category-header">
@@ -1453,7 +1437,6 @@
             `;
           });
 
-          // Add total
           html += `
             <div class="confirmation-total">
               סה"כ מוצרים: ${totalProducts}
@@ -1461,7 +1444,6 @@
           `;
         }
 
-        // Add buttons
         html += `
           <div class="confirmation-buttons">
             <button type="button" class="confirmation-btn confirmation-btn-back" onclick="closeConfirmationModal()">
@@ -1496,7 +1478,15 @@
           submitBtn.disabled = true;
           showLoading(true);
 
-          await submitData(State.pendingSubmissionData);
+          // Add submission timestamp before sending
+          const dataToSend = {
+            ...State.pendingSubmissionData,
+            submission_time: getIsraeliTime(),
+          };
+
+          console.log('Sending data to API:', dataToSend);
+
+          await submitData(dataToSend);
 
           showLoading(false);
           showMessage('success', '✓ תעודת המשלוח נשלחה בהצלחה! אימייל נשלח לאישור.');
@@ -1755,18 +1745,25 @@
         const timeoutId = setTimeout(() => controller.abort(), 45000);
 
         try {
-          await fetch(CONFIG.API_URL, {
+          const response = await fetch(CONFIG.API_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+            },
             body: JSON.stringify(data),
             mode: 'no-cors',
             signal: controller.signal,
           });
 
           clearTimeout(timeoutId);
+          console.log('Data sent successfully (no-cors mode)');
           return true;
         } catch (error) {
           clearTimeout(timeoutId);
+
+          if (error.name === 'AbortError') {
+            console.error('Request timeout');
+          }
 
           if (attempt < CONFIG.MAX_RETRIES - 1) {
             console.error(`Submission attempt ${attempt + 1} failed:`, error);
@@ -1792,7 +1789,6 @@
             return;
           }
 
-          // Collect data and show confirmation
           const data = collectFormData(form);
           State.pendingSubmissionData = data;
           showConfirmationModal(data);
@@ -1804,7 +1800,6 @@
 
       // Initialize
       function setTodayDate() {
-        // Get today's date in Israeli timezone
         const now = new Date();
         const formatter = new Intl.DateTimeFormat('en-CA', {
           timeZone: 'Asia/Jerusalem',
@@ -1813,12 +1808,11 @@
           day: '2-digit',
         });
 
-        const israeliDate = formatter.format(now); // Returns YYYY-MM-DD format
+        const israeliDate = formatter.format(now);
         document.getElementById('deliveryDate').value = israeliDate;
       }
 
       function initializeApp() {
-        // Render categories
         const container = document.getElementById('categoriesContainer');
         let html = '';
 
@@ -1831,18 +1825,15 @@
 
         setTodayDate();
 
-        // Attach handlers
         const form = document.getElementById('deliveryForm');
         if (form) form.addEventListener('submit', handleSubmit);
 
-        // Close dropdown on overlay click
         document.getElementById('selectOverlay').addEventListener('click', () => {
           if (State.openSelectId) {
             closeSelect(State.openSelectId);
           }
         });
 
-        // Keyboard support
         document.querySelectorAll('.category-header').forEach((header) => {
           header.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
