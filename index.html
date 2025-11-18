@@ -478,6 +478,194 @@
         cursor: not-allowed;
       }
 
+      /* Review Modal */
+      .review-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 10000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      .review-modal.show {
+        display: flex;
+      }
+
+      .review-content {
+        background: var(--white);
+        border-radius: 16px;
+        max-width: 600px;
+        width: 100%;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--shadow-lg);
+      }
+
+      .review-header {
+        background: var(--dark-green);
+        color: var(--gold);
+        padding: 20px;
+        border-radius: 16px 16px 0 0;
+        text-align: center;
+      }
+
+      .review-header h2 {
+        font-size: 20px;
+        margin: 0;
+      }
+
+      .review-body {
+        padding: 20px;
+        overflow-y: auto;
+        flex: 1;
+      }
+
+      .review-section {
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid var(--border);
+      }
+
+      .review-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .review-section-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--dark-green);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .review-info-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .review-info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px;
+        background: var(--light-bg);
+        border-radius: 6px;
+      }
+
+      .review-info-label {
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .review-info-value {
+        color: var(--text-light);
+      }
+
+      .review-products-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .review-product-item {
+        background: var(--light-bg);
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      .review-product-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+
+      .review-product-name {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 15px;
+      }
+
+      .review-product-quantity {
+        background: var(--dark-green);
+        color: var(--gold);
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 14px;
+      }
+
+      .review-product-category {
+        font-size: 12px;
+        color: var(--text-light);
+        margin-bottom: 6px;
+      }
+
+      .review-product-notes {
+        font-size: 13px;
+        color: var(--text);
+        background: var(--white);
+        padding: 8px;
+        border-radius: 6px;
+        border-right: 3px solid var(--gold);
+        margin-top: 8px;
+      }
+
+      .review-empty {
+        text-align: center;
+        color: var(--text-light);
+        font-style: italic;
+        padding: 20px;
+      }
+
+      .review-footer {
+        padding: 16px 20px;
+        background: var(--light-bg);
+        border-radius: 0 0 16px 16px;
+        display: flex;
+        gap: 12px;
+      }
+
+      .review-btn {
+        flex: 1;
+        padding: 14px;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+
+      .review-btn:active {
+        opacity: 0.8;
+      }
+
+      .review-btn-cancel {
+        background: var(--border);
+        color: var(--text);
+      }
+
+      .review-btn-confirm {
+        background: var(--dark-green);
+        color: var(--gold);
+      }
+
+      .review-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
       /* Messages */
       .message {
         position: fixed;
@@ -487,7 +675,7 @@
         padding: 16px 24px;
         border-radius: 12px;
         font-weight: 600;
-        z-index: 10000;
+        z-index: 10001;
         max-width: 90%;
         text-align: center;
         box-shadow: var(--shadow-lg);
@@ -531,7 +719,7 @@
         display: none;
         align-items: center;
         justify-content: center;
-        z-index: 10001;
+        z-index: 10002;
       }
 
       .loading-overlay.show {
@@ -604,18 +792,25 @@
         .quick-btn {
           flex: 0 0 calc(50% - 3px);
         }
+
+        .review-footer {
+          flex-direction: column;
+        }
       }
 
       /* Scrollbar */
-      .select-options::-webkit-scrollbar {
+      .select-options::-webkit-scrollbar,
+      .review-body::-webkit-scrollbar {
         width: 6px;
       }
 
-      .select-options::-webkit-scrollbar-track {
+      .select-options::-webkit-scrollbar-track,
+      .review-body::-webkit-scrollbar-track {
         background: var(--light-bg);
       }
 
-      .select-options::-webkit-scrollbar-thumb {
+      .select-options::-webkit-scrollbar-thumb,
+      .review-body::-webkit-scrollbar-thumb {
         background: var(--gold);
         border-radius: 3px;
       }
@@ -635,6 +830,46 @@
 
     <!-- Select Overlay -->
     <div class="select-overlay" id="selectOverlay"></div>
+
+    <!-- Review Modal -->
+    <div class="review-modal" id="reviewModal">
+      <div class="review-content">
+        <div class="review-header">
+          <h2>סקירת תעודת משלוח</h2>
+        </div>
+        <div class="review-body" id="reviewBody">
+          <!-- Review content will be populated here -->
+        </div>
+        <div class="review-footer">
+          <button type="button" class="review-btn review-btn-cancel" onclick="closeReview()">
+            ביטול ועריכה
+          </button>
+          <button
+            type="button"
+            class="review-btn review-btn-confirm"
+            id="confirmSubmitBtn"
+            onclick="confirmAndSubmit()"
+          >
+            <svg
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              style="display: inline-block; vertical-align: middle; margin-left: 6px"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            אישור ושליחה
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Header -->
     <header class="header">
@@ -690,16 +925,22 @@
 
     <!-- Submit Section -->
     <div class="submit-section">
-      <button type="submit" form="deliveryForm" class="submit-btn" id="submitBtn">
+      <button type="button" class="submit-btn" id="reviewBtn" onclick="openReview()">
         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
             stroke-width="2"
-            d="M5 13l4 4L19 7"
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+          />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
           />
         </svg>
-        שלח תעודת משלוח
+        סקור ושלח תעודה
       </button>
     </div>
 
@@ -709,7 +950,7 @@
         API_URL:
           'https://script.google.com/macros/s/AKfycbz1iNIpGc8vWKhmnD3BkjAKlTiRcVUk_pn41dWXSUvfZuI8ukunlpp0H8oMcOTWyal3Tw/exec',
         MAX_QUANTITY: 50,
-        QUICK_AMOUNTS: [2, 4, 5, 10], // Quick buttons - excludes 1
+        QUICK_AMOUNTS: [2, 4, 5, 10],
         MAX_RETRIES: 3,
         RETRY_DELAY: 2000,
       };
@@ -719,6 +960,7 @@
         customProductCounter: 0,
         isSubmitting: false,
         openSelectId: null,
+        reviewData: null,
       };
 
       // PRODUCT KEYS
@@ -947,30 +1189,6 @@
         )}/${date.getFullYear()}`;
       }
 
-      function getIsraeliTime() {
-        // Get current time in Israeli timezone (Asia/Jerusalem)
-        const now = new Date();
-
-        const formatter = new Intl.DateTimeFormat('en-GB', {
-          timeZone: 'Asia/Jerusalem',
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        });
-
-        const parts = formatter.formatToParts(now);
-        const partsMap = {};
-        parts.forEach((part) => {
-          partsMap[part.type] = part.value;
-        });
-
-        // Return in format: DD/MM/YYYY HH:MM
-        return `${partsMap.day}/${partsMap.month}/${partsMap.year} ${partsMap.hour}:${partsMap.minute}`;
-      }
-
       function generateId() {
         return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       }
@@ -978,7 +1196,6 @@
       // Custom Select Functions
       function createCustomSelect(productKey) {
         const selectId = `select_${productKey}`;
-        // Generate options from 0 to MAX_QUANTITY
         const options = Array.from({ length: CONFIG.MAX_QUANTITY + 1 }, (_, i) => i);
 
         return `
@@ -1015,7 +1232,6 @@
         const trigger = dropdown.previousElementSibling;
         const overlay = document.getElementById('selectOverlay');
 
-        // Close any open select
         if (State.openSelectId && State.openSelectId !== selectId) {
           closeSelect(State.openSelectId);
         }
@@ -1030,18 +1246,16 @@
           overlay.classList.add('active');
           State.openSelectId = selectId;
 
-          // Reset search
           const searchInput = dropdown.querySelector('input[type="text"]');
           if (searchInput) {
             searchInput.value = '';
             filterOptions(selectId, '');
           }
 
-          // Scroll to selected value
           setTimeout(() => {
             const selectedValue = document.getElementById(`${selectId}_input`).value;
             const options = dropdown.querySelectorAll('.select-option');
-            options.forEach((opt, idx) => {
+            options.forEach((opt) => {
               if (opt.textContent.trim() === selectedValue) {
                 opt.scrollIntoView({ block: 'center' });
               }
@@ -1082,7 +1296,6 @@
           }
         });
 
-        // Show no results message
         let noResults = optionsContainer.querySelector('.no-results');
         if (visibleCount === 0) {
           if (!noResults) {
@@ -1122,12 +1335,10 @@
           loadingStartTime = Date.now();
           loadingText.textContent = 'שולח נתונים...';
 
-          // Update message after 5 seconds
           loadingTimer = setTimeout(() => {
             const elapsed = Math.floor((Date.now() - loadingStartTime) / 1000);
             loadingText.textContent = `עדיין מעבד... (${elapsed} שניות)`;
 
-            // Continue updating every 3 seconds
             const updateInterval = setInterval(() => {
               if (!overlay.classList.contains('show')) {
                 clearInterval(updateInterval);
@@ -1306,6 +1517,165 @@
         }
       }
 
+      // Review Functions
+      function openReview() {
+        const form = document.getElementById('deliveryForm');
+
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          return;
+        }
+
+        const data = collectFormData(form);
+        State.reviewData = data;
+
+        renderReviewModal(data);
+
+        const modal = document.getElementById('reviewModal');
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeReview() {
+        const modal = document.getElementById('reviewModal');
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+        State.reviewData = null;
+      }
+
+      function renderReviewModal(data) {
+        const reviewBody = document.getElementById('reviewBody');
+
+        let html = `
+          <div class="review-section">
+            <h3 class="review-section-title">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              פרטי תעודה
+            </h3>
+            <div class="review-info-grid">
+              <div class="review-info-row">
+                <span class="review-info-label">תאריך משלוח:</span>
+                <span class="review-info-value">${data.delivery_date || 'לא צוין'}</span>
+              </div>
+              <div class="review-info-row">
+                <span class="review-info-label">מספר תעודה:</span>
+                <span class="review-info-value">${data.certificate_number || 'לא צוין'}</span>
+              </div>
+              <div class="review-info-row">
+                <span class="review-info-label">ממלא התעודה:</span>
+                <span class="review-info-value">${data.filler_name || 'לא צוין'}</span>
+              </div>
+            </div>
+          </div>
+        `;
+
+        if (data.products.length === 0) {
+          html += `
+            <div class="review-section">
+              <h3 class="review-section-title">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                מוצרים
+              </h3>
+              <div class="review-empty">לא נבחרו מוצרים</div>
+            </div>
+          `;
+        } else {
+          html += `
+            <div class="review-section">
+              <h3 class="review-section-title">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                מוצרים (${data.products.length})
+              </h3>
+              <div class="review-products-list">
+          `;
+
+          data.products.forEach((product) => {
+            html += `
+              <div class="review-product-item">
+                <div class="review-product-header">
+                  <span class="review-product-name">${product.name}</span>
+                  <span class="review-product-quantity">${product.quantity}</span>
+                </div>
+                <div class="review-product-category">${product.category}</div>
+                ${
+                  product.notes
+                    ? `<div class="review-product-notes">הערה: ${product.notes}</div>`
+                    : ''
+                }
+              </div>
+            `;
+          });
+
+          html += `
+              </div>
+            </div>
+          `;
+        }
+
+        reviewBody.innerHTML = html;
+      }
+
+      async function confirmAndSubmit() {
+        if (!State.reviewData || State.isSubmitting) return;
+
+        const confirmBtn = document.getElementById('confirmSubmitBtn');
+
+        try {
+          State.isSubmitting = true;
+          confirmBtn.disabled = true;
+          showLoading(true);
+
+          await submitData(State.reviewData);
+
+          showLoading(false);
+          closeReview();
+          showMessage('success', '✓ תעודת המשלוח נשלחה בהצלחה! אימייל נשלח לאישור.');
+
+          resetForm();
+        } catch (error) {
+          console.error('Submission error:', error);
+          showLoading(false);
+          showMessage('error', '✗ אירעה שגיאה. אנא נסה שוב.');
+        } finally {
+          State.isSubmitting = false;
+          confirmBtn.disabled = false;
+        }
+      }
+
+      function resetForm() {
+        const form = document.getElementById('deliveryForm');
+        form.reset();
+        setTodayDate();
+
+        document.querySelectorAll('.select-value').forEach((el) => {
+          el.textContent = '0';
+        });
+        document.querySelectorAll('input[type="hidden"]').forEach((el) => {
+          if (el.name.includes('_quantity')) {
+            el.value = '0';
+          }
+        });
+
+        document.getElementById('customProductsList').innerHTML = '';
+        State.customProductCounter = 0;
+        document.getElementById('customCount').textContent = '0';
+
+        document.querySelectorAll('.category-content.active').forEach((el) => {
+          el.classList.remove('active');
+        });
+        document.querySelectorAll('.category-header.active').forEach((el) => {
+          el.classList.remove('active');
+        });
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
       // Data Collection
       function collectFormData(form) {
         const formData = new FormData(form);
@@ -1317,7 +1687,6 @@
           products: [],
         };
 
-        // Regular products
         Object.entries(CATEGORIES).forEach(([categoryKey, categoryData]) => {
           categoryData.products.forEach((productName) => {
             const productKey = PRODUCT_KEYS[productName];
@@ -1342,7 +1711,6 @@
           });
         });
 
-        // Custom products
         for (let i = 1; i <= State.customProductCounter; i++) {
           const name = formData.get(`custom_product_name_${i}`);
           if (name) {
@@ -1392,72 +1760,8 @@
         }
       }
 
-      // Form Handler
-      async function handleSubmit(event) {
-        event.preventDefault();
-
-        if (State.isSubmitting) return;
-
-        const form = event.target;
-        const submitBtn = document.getElementById('submitBtn');
-
-        try {
-          if (!form.checkValidity()) {
-            form.reportValidity();
-            return;
-          }
-
-          State.isSubmitting = true;
-          submitBtn.disabled = true;
-          showLoading(true);
-
-          const data = collectFormData(form);
-          await submitData(data);
-
-          showLoading(false);
-          showMessage('success', '✓ תעודת המשלוח נשלחה בהצלחה! אימייל נשלח לאישור.');
-
-          // Reset form
-          form.reset();
-          setTodayDate();
-
-          // Reset all selects
-          document.querySelectorAll('.select-value').forEach((el) => {
-            el.textContent = '0';
-          });
-          document.querySelectorAll('input[type="hidden"]').forEach((el) => {
-            if (el.name.includes('_quantity')) {
-              el.value = '0';
-            }
-          });
-
-          // Clear custom products
-          document.getElementById('customProductsList').innerHTML = '';
-          State.customProductCounter = 0;
-          document.getElementById('customCount').textContent = '0';
-
-          // Close all categories
-          document.querySelectorAll('.category-content.active').forEach((el) => {
-            el.classList.remove('active');
-          });
-          document.querySelectorAll('.category-header.active').forEach((el) => {
-            el.classList.remove('active');
-          });
-
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        } catch (error) {
-          console.error('Submission error:', error);
-          showLoading(false);
-          showMessage('error', '✗ אירעה שגיאה. אנא נסה שוב.');
-        } finally {
-          State.isSubmitting = false;
-          submitBtn.disabled = false;
-        }
-      }
-
       // Initialize
       function setTodayDate() {
-        // Get today's date in Israeli timezone
         const now = new Date();
         const formatter = new Intl.DateTimeFormat('en-CA', {
           timeZone: 'Asia/Jerusalem',
@@ -1466,12 +1770,11 @@
           day: '2-digit',
         });
 
-        const israeliDate = formatter.format(now); // Returns YYYY-MM-DD format
+        const israeliDate = formatter.format(now);
         document.getElementById('deliveryDate').value = israeliDate;
       }
 
       function initializeApp() {
-        // Render categories
         const container = document.getElementById('categoriesContainer');
         let html = '';
 
@@ -1484,18 +1787,12 @@
 
         setTodayDate();
 
-        // Attach handlers
-        const form = document.getElementById('deliveryForm');
-        if (form) form.addEventListener('submit', handleSubmit);
-
-        // Close dropdown on overlay click
         document.getElementById('selectOverlay').addEventListener('click', () => {
           if (State.openSelectId) {
             closeSelect(State.openSelectId);
           }
         });
 
-        // Keyboard support
         document.querySelectorAll('.category-header').forEach((header) => {
           header.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -1505,9 +1802,8 @@
           });
         });
 
-        console.log('Zuza Patisserie - Form Ready');
+        console.log('Zuza Patisserie - Form Ready with Review Step');
         console.log('Product mappings loaded:', Object.keys(PRODUCT_KEYS).length);
-        console.log('API URL:', CONFIG.API_URL);
       }
 
       // Global functions
@@ -1518,6 +1814,9 @@
       window.quickSet = quickSet;
       window.addCustomProduct = addCustomProduct;
       window.removeCustomProduct = removeCustomProduct;
+      window.openReview = openReview;
+      window.closeReview = closeReview;
+      window.confirmAndSubmit = confirmAndSubmit;
 
       // Start
       if (document.readyState === 'loading') {
