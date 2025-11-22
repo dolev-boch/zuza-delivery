@@ -397,7 +397,7 @@
   <body>
     <div class="container">
       <div class="header">
-        <div class="brand">ZOUZA</div>
+        <div class="brand">ZUZA</div>
         <div class="brand-subtitle">P Â T I S S E R I E</div>
         <div class="header-title">אישור תעודת משלוח</div>
       </div>
@@ -509,30 +509,10 @@
         }
       }
 
-      async function loadDeliveryData() {
+      // JSONP callback function for loading data
+      window.handleDeliveryData = function (result) {
         try {
-          const params = getUrlParams();
-
-          if (!params.day || !params.submission_id) {
-            throw new Error('חסרים פרמטרים בקישור');
-          }
-
-          const url = `${SCRIPT_URL}?action=get_delivery&day=${
-            params.day
-          }&submission_id=${encodeURIComponent(params.submission_id)}`;
-          console.log('Loading from:', url);
-
-          const response = await fetch(url, {
-            method: 'GET',
-            redirect: 'follow',
-          });
-
-          if (!response.ok) {
-            throw new Error(`שגיאת שרת: ${response.status}`);
-          }
-
-          const result = await response.json();
-          console.log('Response:', result);
+          console.log('JSONP Response:', result);
 
           if (!result.success) {
             throw new Error(result.error || 'שגיאה בטעינת נתונים');
@@ -547,6 +527,35 @@
           });
 
           displayDeliveryData();
+        } catch (error) {
+          console.error('Error processing data:', error);
+          showError(`שגיאה: ${error.message}`);
+        }
+      };
+
+      function loadDeliveryData() {
+        try {
+          const params = getUrlParams();
+
+          if (!params.day || !params.submission_id) {
+            throw new Error('חסרים פרמטרים בקישור');
+          }
+
+          // Use JSONP to bypass CORS
+          const script = document.createElement('script');
+          const callbackName = 'handleDeliveryData';
+          const url = `${SCRIPT_URL}?action=get_delivery&day=${
+            params.day
+          }&submission_id=${encodeURIComponent(params.submission_id)}&callback=${callbackName}`;
+
+          console.log('Loading from:', url);
+
+          script.src = url;
+          script.onerror = function () {
+            showError('שגיאה בטעינת הנתונים. נסה לרענן את העמוד.');
+          };
+
+          document.body.appendChild(script);
         } catch (error) {
           console.error('Error:', error);
           showError(`שגיאה: ${error.message}`);
@@ -723,36 +732,46 @@
 
           console.log('Submitting confirmation:', confirmationData);
 
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 60000);
+          // Create a form and submit it to bypass CORS for POST
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = SCRIPT_URL;
+          form.target = 'confirmationFrame';
+          form.style.display = 'none';
 
-          const response = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(confirmationData),
-            redirect: 'follow',
-            signal: controller.signal,
-          });
+          // Add data as hidden input
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'data';
+          input.value = JSON.stringify(confirmationData);
+          form.appendChild(input);
 
-          clearTimeout(timeoutId);
-          console.log('Request completed');
+          // Create hidden iframe for form submission
+          let iframe = document.getElementById('confirmationFrame');
+          if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'confirmationFrame';
+            iframe.name = 'confirmationFrame';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+          }
 
-          document.getElementById('loadingOverlay').classList.remove('show');
+          document.body.appendChild(form);
+          form.submit();
 
-          document.getElementById('mainContent').style.display = 'none';
-          document.getElementById('successState').style.display = 'block';
+          // Wait a bit for the submission to complete
+          setTimeout(() => {
+            document.getElementById('loadingOverlay').classList.remove('show');
+            document.getElementById('mainContent').style.display = 'none';
+            document.getElementById('successState').style.display = 'block';
+
+            // Clean up
+            document.body.removeChild(form);
+          }, 2000);
         } catch (error) {
           console.error('Error:', error);
           document.getElementById('loadingOverlay').classList.remove('show');
-
-          if (error.name === 'AbortError') {
-            alert('הבקשה ארכה יותר מדי. ייתכן שהאישור עבר בהצלחה - נא לבדוק עם המנהל.');
-          } else {
-            alert(`שגיאה: ${error.message}\n\nנסה שנית או פנה לתמיכה.`);
-          }
+          alert(`שגיאה: ${error.message}\n\nנסה שנית או פנה לתמיכה.`);
 
           document.getElementById('btnFullConfirm').disabled = false;
           document.getElementById('btnCustomConfirm').disabled = false;
