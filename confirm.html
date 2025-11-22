@@ -146,9 +146,9 @@
         font-size: 13px;
         color: #666;
       }
-
-      /* Quantity Controls - Mobile Optimized */
-      .quantity-wrapper {
+      
+      /* Quantity Controls with Plus/Minus Buttons */
+      .quantity-input-wrapper {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -308,43 +308,37 @@
         font-weight: 600;
         text-align: center;
       }
+      .loading-subtext {
+        color: rgba(196, 165, 117, 0.8);
+        font-size: 14px;
+        margin-top: 10px;
+      }
 
-      .success-icon {
-        font-size: 80px;
-        color: #4caf50;
-        margin-bottom: 20px;
-      }
-      .success-title {
-        font-size: 32px;
-        color: #1a2f2f;
-        margin-bottom: 10px;
-        font-weight: bold;
-      }
-      .success-message {
-        font-size: 18px;
-        color: #555;
-        line-height: 1.6;
+      .loading {
+        text-align: center;
+        padding: 60px 20px;
       }
       .error {
         background: #ffebee;
-        border: 2px solid #f44336;
-        border-radius: 8px;
-        padding: 20px;
         color: #c62828;
-        font-size: 16px;
-        line-height: 1.6;
+        padding: 20px;
+        border-radius: 8px;
+        border-right: 4px solid #c62828;
+        margin: 20px;
       }
-      #loadingState,
-      #errorState,
-      #successState {
-        padding: 60px 30px;
+      .success {
+        background: #e8f5e9;
+        color: #2e7d32;
+        padding: 40px;
+        border-radius: 8px;
+        border-right: 4px solid #4caf50;
         text-align: center;
+        margin: 20px;
       }
-      #mainContent {
-        display: none;
+      .success h2 {
+        font-size: 28px;
+        margin-bottom: 10px;
       }
-
-      /* Mobile Responsive */
       @media (max-width: 768px) {
         body {
           padding: 10px;
@@ -360,6 +354,9 @@
         }
         .info-section {
           padding: 20px;
+        }
+        .info-grid {
+          grid-template-columns: 1fr;
         }
         .content {
           padding: 20px;
@@ -383,8 +380,8 @@
           padding: 6px 8px;
         }
         .actions {
-          padding: 15px 20px;
           flex-direction: column;
+          padding: 15px 20px;
         }
         .btn {
           width: 100%;
@@ -395,6 +392,13 @@
     </style>
   </head>
   <body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <div class="loading-text">מעבד את האישור...</div>
+      <div class="loading-subtext">אנא המתן, זה עשוי לקחת מספר שניות</div>
+    </div>
+
     <div class="container">
       <div class="header">
         <div class="brand">ZUZA</div>
@@ -402,21 +406,20 @@
         <div class="header-title">אישור תעודת משלוח</div>
       </div>
 
-      <!-- Loading State -->
       <div id="loadingState">
-        <div class="spinner"></div>
-        <div class="loading-text">טוען נתוני משלוח...</div>
+        <div class="loading">
+          <div class="spinner"></div>
+          <p style="color: #666; font-size: 16px">טוען נתונים...</p>
+        </div>
       </div>
 
-      <!-- Error State -->
       <div id="errorState" style="display: none"></div>
 
-      <!-- Main Content -->
-      <div id="mainContent">
+      <div id="mainContent" style="display: none">
         <div class="info-section">
           <div class="info-grid">
             <div class="info-item">
-              <div class="info-label">תאריך ושעת יצירה</div>
+              <div class="info-label">תאריך ושעה</div>
               <div class="info-value" id="deliveryDateTime">-</div>
             </div>
             <div class="info-item">
@@ -424,7 +427,7 @@
               <div class="info-value" id="certNumber">-</div>
             </div>
             <div class="info-item">
-              <div class="info-label">מילא את התעודה</div>
+              <div class="info-label">ממלא התעודה</div>
               <div class="info-value" id="fillerName">-</div>
             </div>
             <div class="info-item">
@@ -436,10 +439,10 @@
 
         <div class="content">
           <div class="instruction">
-            <h2>הוראות אישור</h2>
+            <h2>🔍 בדוק והתאם כמויות</h2>
             <p>
-              בדוק את הכמויות שהגיעו. השתמש בכפתורי + ו- לשינוי הכמויות במידת הצורך. לאחר מכן, לחץ
-              על "אישור מלא" אם הכל תקין, או "אישור עם שינויים" אם ערכת שינויים.
+              עבור על המוצרים ובדוק שהכמויות תואמות למה שהתקבל בפועל. השתמש בכפתורי + ו- לשינוי הכמויות. אם הכל תואם - לחץ על "אישור
+              מלא". אם יש הבדלים - שנה את הכמויות ולחץ "אישור עם שינויים".
             </p>
           </div>
 
@@ -447,23 +450,17 @@
         </div>
 
         <div class="actions">
-          <button id="btnFullConfirm" class="btn btn-confirm">✓ אישור מלא</button>
-          <button id="btnCustomConfirm" class="btn btn-custom">⚠ אישור עם שינויים</button>
+          <button class="btn btn-confirm" id="btnFullConfirm">✓ אישור מלא</button>
+          <button class="btn btn-custom" id="btnCustomConfirm">📝 אישור עם שינויים</button>
         </div>
       </div>
 
-      <!-- Success State -->
       <div id="successState" style="display: none">
-        <div class="success-icon">✓</div>
-        <div class="success-title">האישור התקבל בהצלחה!</div>
-        <div class="success-message">תעודת המשלוח אושרה ונרשמה במערכת.<br />ניתן לסגור דף זה.</div>
+        <div class="success">
+          <h2>✓ האישור התקבל בהצלחה</h2>
+          <p>תעודת המשלוח עודכנה במערכת.<br />תודה על האישור!</p>
+        </div>
       </div>
-    </div>
-
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay">
-      <div class="spinner"></div>
-      <div class="loading-text">שולח אישור...<br />אנא המתן</div>
     </div>
 
     <script>
@@ -482,37 +479,46 @@
         };
       }
 
-      function formatDateTime(isoString) {
-        if (!isoString) return 'לא זמין';
+      function formatDateTime(submissionTime) {
+        // submissionTime should be in format: DD/MM/YYYY HH:MM
+        console.log('Formatting time:', submissionTime);
 
-        try {
-          const date = new Date(isoString);
-          if (isNaN(date.getTime())) {
-            console.error('Invalid date:', isoString);
-            return 'תאריך לא תקין';
+        if (submissionTime && typeof submissionTime === 'string') {
+          // If it's already in DD/MM/YYYY HH:MM format, return as is
+          if (submissionTime.match(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/)) {
+            return submissionTime;
           }
-
-          const dateStr = date.toLocaleDateString('he-IL', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-          });
-          const timeStr = date.toLocaleTimeString('he-IL', {
-            hour: '2-digit',
-            minute: '2-digit',
-          });
-
-          return `${dateStr} ${timeStr}`;
-        } catch (error) {
-          console.error('Error formatting date:', error, isoString);
-          return 'שגיאה בפורמט תאריך';
         }
+
+        // If we don't have valid submission time, return error message
+        console.error('Invalid submission time format:', submissionTime);
+        return 'זמן לא זמין';
       }
 
-      // JSONP callback function for loading data
-      window.handleDeliveryData = function (result) {
+      async function loadDeliveryData() {
         try {
-          console.log('JSONP Response:', result);
+          const params = getUrlParams();
+
+          if (!params.day || !params.submission_id) {
+            throw new Error('חסרים פרמטרים בקישור');
+          }
+
+          const url = `${SCRIPT_URL}?action=get_delivery&day=${
+            params.day
+          }&submission_id=${encodeURIComponent(params.submission_id)}`;
+          console.log('Loading from:', url);
+
+          const response = await fetch(url, {
+            method: 'GET',
+            redirect: 'follow',
+          });
+
+          if (!response.ok) {
+            throw new Error(`שגיאת שרת: ${response.status}`);
+          }
+
+          const result = await response.json();
+          console.log('Response:', result);
 
           if (!result.success) {
             throw new Error(result.error || 'שגיאה בטעינת נתונים');
@@ -527,35 +533,6 @@
           });
 
           displayDeliveryData();
-        } catch (error) {
-          console.error('Error processing data:', error);
-          showError(`שגיאה: ${error.message}`);
-        }
-      };
-
-      function loadDeliveryData() {
-        try {
-          const params = getUrlParams();
-
-          if (!params.day || !params.submission_id) {
-            throw new Error('חסרים פרמטרים בקישור');
-          }
-
-          // Use JSONP to bypass CORS
-          const script = document.createElement('script');
-          const callbackName = 'handleDeliveryData';
-          const url = `${SCRIPT_URL}?action=get_delivery&day=${
-            params.day
-          }&submission_id=${encodeURIComponent(params.submission_id)}&callback=${callbackName}`;
-
-          console.log('Loading from:', url);
-
-          script.src = url;
-          script.onerror = function () {
-            showError('שגיאה בטעינת הנתונים. נסה לרענן את העמוד.');
-          };
-
-          document.body.appendChild(script);
         } catch (error) {
           console.error('Error:', error);
           showError(`שגיאה: ${error.message}`);
@@ -613,7 +590,7 @@
             tr.innerHTML = `
                         <td><div class="product-name">${product.name}</div></td>
                         <td>
-                            <div class="quantity-wrapper">
+                            <div class="quantity-input-wrapper">
                                 <button 
                                     class="quantity-btn minus" 
                                     data-product-key="${product.key}"
@@ -624,6 +601,8 @@
                                     class="quantity-display" 
                                     id="qty-${product.key}"
                                     data-original="${product.quantity}"
+                                    data-product-key="${product.key}"
+                                    data-product-name="${product.name}"
                                 >${product.quantity}</div>
                                 <button 
                                     class="quantity-btn plus" 
@@ -649,20 +628,18 @@
         const display = document.getElementById(`qty-${productKey}`);
         const currentQty = parseInt(display.textContent);
         const newQty = Math.max(0, currentQty + delta);
-
+        
         display.textContent = newQty;
-
+        
         const original = parseInt(display.dataset.original);
         if (newQty !== original) {
           display.classList.add('changed');
         } else {
           display.classList.remove('changed');
         }
-
+        
         // Update minus button state
-        const minusBtn = document.querySelector(
-          `.quantity-btn.minus[data-product-key="${productKey}"]`
-        );
+        const minusBtn = document.querySelector(`.quantity-btn.minus[data-product-key="${productKey}"]`);
         if (minusBtn) {
           minusBtn.disabled = newQty === 0;
         }
@@ -708,17 +685,17 @@
           btnFull.disabled = true;
           btnCustom.disabled = true;
 
+          // Show loading overlay
           document.getElementById('loadingOverlay').classList.add('show');
 
           const params = getUrlParams();
 
           const confirmedProducts = [];
-          deliveryData.products.forEach((product) => {
-            const display = document.getElementById(`qty-${product.key}`);
+          document.querySelectorAll('.quantity-display').forEach((display) => {
             confirmedProducts.push({
-              key: product.key,
-              name: product.name,
-              quantity: parseInt(display.textContent),
+              key: display.dataset.productKey,
+              name: display.dataset.productName,
+              quantity: parseInt(display.textContent) || 0,
             });
           });
 
@@ -732,46 +709,38 @@
 
           console.log('Submitting confirmation:', confirmationData);
 
-          // Create a form and submit it to bypass CORS for POST
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = SCRIPT_URL;
-          form.target = 'confirmationFrame';
-          form.style.display = 'none';
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-          // Add data as hidden input
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = 'data';
-          input.value = JSON.stringify(confirmationData);
-          form.appendChild(input);
+          const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(confirmationData),
+            redirect: 'follow',
+            signal: controller.signal,
+          });
 
-          // Create hidden iframe for form submission
-          let iframe = document.getElementById('confirmationFrame');
-          if (!iframe) {
-            iframe = document.createElement('iframe');
-            iframe.id = 'confirmationFrame';
-            iframe.name = 'confirmationFrame';
-            iframe.style.display = 'none';
-            document.body.appendChild(iframe);
-          }
+          clearTimeout(timeoutId);
+          console.log('Request completed');
 
-          document.body.appendChild(form);
-          form.submit();
+          // Hide loading overlay
+          document.getElementById('loadingOverlay').classList.remove('show');
 
-          // Wait a bit for the submission to complete
-          setTimeout(() => {
-            document.getElementById('loadingOverlay').classList.remove('show');
-            document.getElementById('mainContent').style.display = 'none';
-            document.getElementById('successState').style.display = 'block';
-
-            // Clean up
-            document.body.removeChild(form);
-          }, 2000);
+          // Show success
+          document.getElementById('mainContent').style.display = 'none';
+          document.getElementById('successState').style.display = 'block';
         } catch (error) {
           console.error('Error:', error);
           document.getElementById('loadingOverlay').classList.remove('show');
-          alert(`שגיאה: ${error.message}\n\nנסה שנית או פנה לתמיכה.`);
+
+          if (error.name === 'AbortError') {
+            alert('הבקשה ארכה יותר מדי. ייתכן שהאישור עבר בהצלחה - נא לבדוק עם המנהל.');
+          } else {
+            alert(`שגיאה: ${error.message}\n\nנסה שנית או פנה לתמיכה.`);
+          }
 
           document.getElementById('btnFullConfirm').disabled = false;
           document.getElementById('btnCustomConfirm').disabled = false;
@@ -789,6 +758,7 @@
 
       window.addEventListener('DOMContentLoaded', loadDeliveryData);
 
+      // Prevent accidental page unload during submission
       window.addEventListener('beforeunload', (e) => {
         if (isSubmitting) {
           e.preventDefault();
