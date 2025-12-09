@@ -366,7 +366,7 @@
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
       }
       .modal-header {
-        background: #2196F3;
+        background: #2196f3;
         color: white;
         padding: 20px 30px;
         border-radius: 12px 12px 0 0;
@@ -411,7 +411,7 @@
       }
       .modal-search input:focus {
         outline: none;
-        border-color: #2196F3;
+        border-color: #2196f3;
       }
       .modal-category {
         margin-bottom: 20px;
@@ -431,7 +431,7 @@
         background: #e8e8e8;
       }
       .modal-category-header.active {
-        background: #2196F3;
+        background: #2196f3;
         color: white;
       }
       .modal-category-arrow {
@@ -664,7 +664,17 @@
         <div class="actions">
           <button class="btn btn-confirm" id="btnFullConfirm">✓ אישור מלא</button>
           <button class="btn btn-custom" id="btnCustomConfirm">🔁 אישור עם שינויים</button>
-          <button class="btn btn-add-products" id="btnAddProducts" style="background: #2196F3; color: white; box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);">+ הוספת מוצרים שנשכחו</button>
+          <button
+            class="btn btn-add-products"
+            id="btnAddProducts"
+            style="
+              background: #2196f3;
+              color: white;
+              box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+            "
+          >
+            + הוספת מוצרים שנשכחו
+          </button>
         </div>
       </div>
 
@@ -685,16 +695,27 @@
         </div>
         <div class="modal-body">
           <div class="modal-search">
-            <input type="text" id="modalSearchInput" placeholder="חיפוש מוצר..." oninput="filterModalProducts(this.value)">
+            <input
+              type="text"
+              id="modalSearchInput"
+              placeholder="חיפוש מוצר..."
+              oninput="filterModalProducts(this.value)"
+            />
           </div>
           <div id="modalCategoriesContainer"></div>
-          <div class="added-products-section" id="addedProductsSection" style="display: none;">
+          <div class="added-products-section" id="addedProductsSection" style="display: none">
             <h3>מוצרים שנוספו:</h3>
             <div id="addedProductsList"></div>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn" style="background: #666; color: white;" onclick="closeAddProductsModal()">סגור</button>
+          <button
+            class="btn"
+            style="background: #666; color: white"
+            onclick="closeAddProductsModal()"
+          >
+            סגור
+          </button>
           <button class="btn btn-confirm" onclick="saveAddedProducts()">✓ שמור והוסף למשלוח</button>
         </div>
       </div>
@@ -702,7 +723,7 @@
 
     <script>
       const SCRIPT_URL =
-        'https://script.google.com/macros/s/AKfycbxCPG6oGI2lWhfAm83WniVIZqeTJw0I4xeWL2unrfy_k2YbM11-i29lYsMYoJgVf8IHMQ/exec';
+        'https://script.google.com/macros/s/AKfycbxJ-kMLVwBOb7cV0A_ymojebI8eUFExBr4nYIyaRyJAnmkOzupitiRCsNwpx6u-aLo1zw/exec';
 
       let deliveryData = null;
       let originalQuantities = {};
@@ -715,12 +736,12 @@
         'קשיו גולד': 'hanukkah_cashew_gold',
         "שוקולד קראנץ'": 'hanukkah_chocolate_crunch',
         'גבינה פירורים': 'hanukkah_cheese_crumbs',
-        'סוכריות': 'hanukkah_candies',
+        סוכריות: 'hanukkah_candies',
         'וניל פטל': 'hanukkah_vanilla_raspberry',
-        'פיסטוק': 'hanukkah_pistachio',
+        פיסטוק: 'hanukkah_pistachio',
         'מנגו פסיפלורה': 'hanukkah_mango_passionfruit',
-        'פטיסייר': 'hanukkah_patissier',
-        'קינמון': 'hanukkah_cinnamon',
+        פטיסייר: 'hanukkah_patissier',
+        קינמון: 'hanukkah_cinnamon',
         'סנט הונורה': 'hanukkah_saint_honore',
         // Sweet pastries
         'קרואסון חמאה': 'sweet_croissant_butter',
@@ -728,11 +749,11 @@
         'מאפה פירות': 'sweet_fruit_pastry',
         'מאפה פקאן': 'sweet_pecan_pastry',
         'מאפה שקדים שוקולד חלב': 'sweet_almond_milk_chocolate',
-        'סינבון': 'sweet_cinnamon',
+        סינבון: 'sweet_cinnamon',
         'פאן סוויס': 'sweet_pain_suisse',
         'מאפה פפיון': 'sweet_butterfly_pastry',
         'מאפה שתי וערב': 'sweet_shti_veerev',
-        'רוגלך': 'sweet_rugelach',
+        רוגלך: 'sweet_rugelach',
         "שוקולד צ'יפס": 'sweet_chocolate_chips',
         'קרואסון פיסטוק': 'sweet_croissant_pistachio',
         'קרואסון גבינה פירות יער': 'sweet_croissant_cheese_berry',
@@ -747,7 +768,7 @@
         "ריבועי פוקאצ'ה": 'salty_focaccia_squares',
         "פוקאצ'ה אישית": 'salty_personal_focaccia',
         'קיש ק.10': 'salty_quiche_10',
-        'בייגלסון': 'salty_bagelson',
+        בייגלסון: 'salty_bagelson',
         'חלות בריוש': 'salty_brioche_challah',
         'כיכר לחם': 'salty_bread_loaf',
         // Sandwiches
@@ -760,8 +781,8 @@
         "כריך פוקאצ'ה": 'sandwiches_focaccia',
         // Shelf products
         'עוגת שמרים': 'shelf_yeast_cake',
-        'חלות': 'shelf_challah',
-        'בחושות': 'shelf_thick',
+        חלות: 'shelf_challah',
+        בחושות: 'shelf_thick',
         // Whole cakes
         "פס פאדג' מסקרפונה": 'whole_cakes_fudge_mascarpone_strip',
         'פס רושה אגוזי לוז': 'whole_cakes_rusha_hazelnut_strip',
@@ -787,15 +808,15 @@
         'כדור שוקולד': 'vitrina_chocolate_ball',
         'פחזנית וניל אישית': 'vitrina_personal_pheasant_vanilla',
         // Cookies
-        'פלורנטין': 'cookies_florentine',
+        פלורנטין: 'cookies_florentine',
         'קפה שקדים': 'cookies_coffee_almonds',
         'שקדים לימון': 'cookies_almonds_lemon',
-        'פקאן': 'cookies_pecan',
-        'בראוניז': 'cookies_brownies',
+        פקאן: 'cookies_pecan',
+        בראוניז: 'cookies_brownies',
         'חמאה לוז': 'cookies_butter_hazelnut',
-        'פרמזן': 'cookies_parmesan',
+        פרמזן: 'cookies_parmesan',
         'עוגיות תמרים': 'cookies_dates',
-        'אלפחורס': 'cookies_alfajores',
+        אלפחורס: 'cookies_alfajores',
         'פיסטוק לל"ג': 'cookies_pistachio_lag_baomer',
         'קקאו שוקולד': 'cookies_cocoa_chocolate',
         // Various
@@ -805,49 +826,142 @@
         'חלמון מפוסטר': 'various_yolk_pasteurized',
         'פרמזן חומר גלם': 'various_parmesan_raw',
         'שמנת מתוקה': 'various_sweet_cream',
-        'חמאה': 'various_butter',
+        חמאה: 'various_butter',
         'פס פיסטוק פירות יער': 'various_pistachio_berry_strip',
-        'פרסבורגר פרג': 'various_pressburger_poppy'
+        'פרסבורגר פרג': 'various_pressburger_poppy',
       };
 
       // Categories Data
       const CATEGORIES = {
         hanukkah2025: {
           name: 'סופגניות חנוכה 2025',
-          products: ['קשיו גולד', "שוקולד קראנץ'", 'גבינה פירורים', 'סוכריות', 'וניל פטל', 'פיסטוק', 'מנגו פסיפלורה', 'פטיסייר', 'קינמון', 'סנט הונורה']
+          products: [
+            'קשיו גולד',
+            "שוקולד קראנץ'",
+            'גבינה פירורים',
+            'סוכריות',
+            'וניל פטל',
+            'פיסטוק',
+            'מנגו פסיפלורה',
+            'פטיסייר',
+            'קינמון',
+            'סנט הונורה',
+          ],
         },
         sweet: {
           name: 'מאפים מתוקים',
-          products: ['קרואסון חמאה', 'קרואסון שוקולד', 'מאפה פירות', 'מאפה פקאן', 'מאפה שקדים שוקולד חלב', 'סינבון', 'פאן סוויס', 'מאפה פפיון', 'מאפה שתי וערב', 'רוגלך', "שוקולד צ'יפס", 'קרואסון פיסטוק', 'קרואסון גבינה פירות יער', 'קרואסון שקדים', 'קווין אמאן']
+          products: [
+            'קרואסון חמאה',
+            'קרואסון שוקולד',
+            'מאפה פירות',
+            'מאפה פקאן',
+            'מאפה שקדים שוקולד חלב',
+            'סינבון',
+            'פאן סוויס',
+            'מאפה פפיון',
+            'מאפה שתי וערב',
+            'רוגלך',
+            "שוקולד צ'יפס",
+            'קרואסון פיסטוק',
+            'קרואסון גבינה פירות יער',
+            'קרואסון שקדים',
+            'קווין אמאן',
+          ],
         },
         salty: {
           name: 'מלוחים',
-          products: ['לחמניה ריקה', 'בייגל ריק', 'לחמנית פרג ריקה', 'בורקס גבינה ריק', 'מאפה מלוח (מלבן)', "ריבועי פוקאצ'ה", "פוקאצ'ה אישית", 'קיש ק.10', 'בייגלסון', 'חלות בריוש', 'כיכר לחם']
+          products: [
+            'לחמניה ריקה',
+            'בייגל ריק',
+            'לחמנית פרג ריקה',
+            'בורקס גבינה ריק',
+            'מאפה מלוח (מלבן)',
+            "ריבועי פוקאצ'ה",
+            "פוקאצ'ה אישית",
+            'קיש ק.10',
+            'בייגלסון',
+            'חלות בריוש',
+            'כיכר לחם',
+          ],
         },
         sandwiches: {
           name: 'כריכים',
-          products: ['מחמצת סלק', 'מחמצת חצילים', 'בריוש פרג קממבר', 'כריך בורקס גבינות', 'כריך קרואסון חמאה', 'כריך בייגל', "כריך פוקאצ'ה"]
+          products: [
+            'מחמצת סלק',
+            'מחמצת חצילים',
+            'בריוש פרג קממבר',
+            'כריך בורקס גבינות',
+            'כריך קרואסון חמאה',
+            'כריך בייגל',
+            "כריך פוקאצ'ה",
+          ],
         },
         shelf: {
           name: 'מוצרי מדף',
-          products: ['עוגת שמרים', 'חלות', 'בחושות']
+          products: ['עוגת שמרים', 'חלות', 'בחושות'],
         },
         whole_cakes: {
           name: 'עוגות שלמות',
-          products: ["פס פאדג' מסקרפונה", 'פס רושה אגוזי לוז', 'פס מנגו פסיפלורה', 'פס קפה פקאן', 'טריקולד ק.20', 'פיסטוק פירות יער ק.20', 'גבינה פירורים ק.20', 'גבינה אפויה ק.20', 'ריבוע רושה אגוזי לוז', 'ריבוע קפה פקאן', "פאדג' שוקולד"]
+          products: [
+            "פס פאדג' מסקרפונה",
+            'פס רושה אגוזי לוז',
+            'פס מנגו פסיפלורה',
+            'פס קפה פקאן',
+            'טריקולד ק.20',
+            'פיסטוק פירות יער ק.20',
+            'גבינה פירורים ק.20',
+            'גבינה אפויה ק.20',
+            'ריבוע רושה אגוזי לוז',
+            'ריבוע קפה פקאן',
+            "פאדג' שוקולד",
+          ],
         },
         vitrina: {
           name: 'קינוחי ויטרינה',
-          products: ["קשיו דולצ'ה", 'פיסטוק פירות יער', 'פחזנית וניל פטל', 'סבלה פקאן', 'טארט פירות', 'טארט לימון 100%', '100 אחוז שוקולד', 'רושה אגוזי לוז', 'פריז ברסט', 'כדור שוקולד', 'פחזנית וניל אישית']
+          products: [
+            "קשיו דולצ'ה",
+            'פיסטוק פירות יער',
+            'פחזנית וניל פטל',
+            'סבלה פקאן',
+            'טארט פירות',
+            'טארט לימון 100%',
+            '100 אחוז שוקולד',
+            'רושה אגוזי לוז',
+            'פריז ברסט',
+            'כדור שוקולד',
+            'פחזנית וניל אישית',
+          ],
         },
         cookies: {
           name: 'עוגיות',
-          products: ['פלורנטין', 'קפה שקדים', 'שקדים לימון', 'פקאן', 'בראוניז', 'חמאה לוז', 'פרמזן', 'עוגיות תמרים', 'אלפחורס', 'פיסטוק לל"ג', 'קקאו שוקולד']
+          products: [
+            'פלורנטין',
+            'קפה שקדים',
+            'שקדים לימון',
+            'פקאן',
+            'בראוניז',
+            'חמאה לוז',
+            'פרמזן',
+            'עוגיות תמרים',
+            'אלפחורס',
+            'פיסטוק לל"ג',
+            'קקאו שוקולד',
+          ],
         },
         various: {
           name: 'מוצרים שונים',
-          products: ['מאפה פטריות', 'מאפה גבינה ופירות יער', 'עוגת גבינה באסקית', 'חלמון מפוסטר', 'פרמזן חומר גלם', 'שמנת מתוקה', 'חמאה', 'פס פיסטוק פירות יער', 'פרסבורגר פרג']
-        }
+          products: [
+            'מאפה פטריות',
+            'מאפה גבינה ופירות יער',
+            'עוגת גבינה באסקית',
+            'חלמון מפוסטר',
+            'פרמזן חומר גלם',
+            'שמנת מתוקה',
+            'חמאה',
+            'פס פיסטוק פירות יער',
+            'פרסבורגר פרג',
+          ],
+        },
       };
 
       function getUrlParams() {
@@ -1168,12 +1282,12 @@
           productsDiv.className = 'modal-category-products';
           productsDiv.id = `modal-cat-${categoryKey}`;
 
-          categoryData.products.forEach(productName => {
+          categoryData.products.forEach((productName) => {
             const productKey = PRODUCT_KEYS[productName];
             if (!productKey) return;
 
             // Check if already in delivery or added
-            const alreadyInDelivery = deliveryData.products.some(p => p.key === productKey);
+            const alreadyInDelivery = deliveryData.products.some((p) => p.key === productKey);
             const alreadyAdded = addedProducts[productKey];
 
             const productItem = document.createElement('div');
@@ -1183,9 +1297,15 @@
             productItem.innerHTML = `
               <div class="modal-product-name">${productName}</div>
               <div class="modal-product-controls">
-                ${alreadyInDelivery ? '<span style="color: #666; font-size: 13px;">כבר במשלוח</span>' :
-                  alreadyAdded ? '<span style="color: #4caf50; font-size: 13px;">נוסף ✓</span>' :
-                  `<button class="modal-add-btn" onclick="addProductToList('${productKey}', '${productName.replace(/'/g, "\\'")}', '${categoryData.name}')">הוסף +</button>`
+                ${
+                  alreadyInDelivery
+                    ? '<span style="color: #666; font-size: 13px;">כבר במשלוח</span>'
+                    : alreadyAdded
+                    ? '<span style="color: #4caf50; font-size: 13px;">נוסף ✓</span>'
+                    : `<button class="modal-add-btn" onclick="addProductToList('${productKey}', '${productName.replace(
+                        /'/g,
+                        "\\'"
+                      )}', '${categoryData.name}')">הוסף +</button>`
                 }
               </div>
             `;
@@ -1210,7 +1330,7 @@
         const lowerSearch = searchTerm.toLowerCase();
         const productItems = document.querySelectorAll('.modal-product-item');
 
-        productItems.forEach(item => {
+        productItems.forEach((item) => {
           const productName = item.dataset.productName;
           if (productName.includes(lowerSearch)) {
             item.style.display = 'flex';
@@ -1225,7 +1345,7 @@
         addedProducts[productKey] = {
           name: productName,
           category: categoryName,
-          quantity: 1
+          quantity: 1,
         };
 
         // Update UI
@@ -1271,9 +1391,9 @@
         // Add products to the main display
         Object.entries(addedProducts).forEach(([productKey, product]) => {
           // Find or create the category section
-          let categorySection = Array.from(document.querySelectorAll('.category-header')).find(
-            header => header.textContent === product.category
-          )?.closest('.category-section');
+          let categorySection = Array.from(document.querySelectorAll('.category-header'))
+            .find((header) => header.textContent === product.category)
+            ?.closest('.category-section');
 
           if (!categorySection) {
             // Create new category section
@@ -1339,7 +1459,7 @@
             name: product.name,
             category: product.category,
             quantity: product.quantity,
-            notes: 'מוצר שנוסף מאוחר יותר'
+            notes: 'מוצר שנוסף מאוחר יותר',
           });
         });
 
