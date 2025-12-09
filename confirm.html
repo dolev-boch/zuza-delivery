@@ -339,6 +339,208 @@
         font-size: 28px;
         margin-bottom: 10px;
       }
+      /* Add Products Modal */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 10001;
+        padding: 20px;
+      }
+      .modal-overlay.show {
+        display: flex;
+      }
+      .modal-content {
+        background: white;
+        border-radius: 12px;
+        max-width: 800px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      }
+      .modal-header {
+        background: #2196F3;
+        color: white;
+        padding: 20px 30px;
+        border-radius: 12px 12px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .modal-header h2 {
+        font-size: 22px;
+        margin: 0;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 28px;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background 0.2s;
+      }
+      .modal-close:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+      .modal-body {
+        padding: 30px;
+      }
+      .modal-search {
+        margin-bottom: 20px;
+      }
+      .modal-search input {
+        width: 100%;
+        padding: 14px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 16px;
+      }
+      .modal-search input:focus {
+        outline: none;
+        border-color: #2196F3;
+      }
+      .modal-category {
+        margin-bottom: 20px;
+      }
+      .modal-category-header {
+        background: #f5f5f5;
+        padding: 12px 16px;
+        font-weight: 600;
+        border-radius: 6px 6px 0 0;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.2s;
+      }
+      .modal-category-header:hover {
+        background: #e8e8e8;
+      }
+      .modal-category-header.active {
+        background: #2196F3;
+        color: white;
+      }
+      .modal-category-arrow {
+        transition: transform 0.3s;
+      }
+      .modal-category-header.active .modal-category-arrow {
+        transform: rotate(180deg);
+      }
+      .modal-category-products {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+        border: 1px solid #e0e0e0;
+        border-top: none;
+        border-radius: 0 0 6px 6px;
+      }
+      .modal-category-products.active {
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .modal-product-item {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.2s;
+      }
+      .modal-product-item:hover {
+        background: #f9f9f9;
+      }
+      .modal-product-item:last-child {
+        border-bottom: none;
+      }
+      .modal-product-name {
+        font-size: 15px;
+        font-weight: 500;
+      }
+      .modal-product-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .modal-add-btn {
+        padding: 8px 20px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .modal-add-btn:hover {
+        background: #45a049;
+      }
+      .modal-add-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      .modal-footer {
+        padding: 20px 30px;
+        border-top: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+      .added-products-section {
+        background: #e8f5e9;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        border-right: 4px solid #4caf50;
+      }
+      .added-products-section h3 {
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: #2e7d32;
+      }
+      .added-product-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        margin: 4px;
+        font-size: 14px;
+        border: 1px solid #4caf50;
+      }
+      .remove-added-product {
+        background: none;
+        border: none;
+        color: #f44336;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 0;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background 0.2s;
+      }
+      .remove-added-product:hover {
+        background: #ffebee;
+      }
+
       @media (max-width: 768px) {
         body {
           padding: 10px;
@@ -387,6 +589,15 @@
           width: 100%;
           padding: 14px 20px;
           font-size: 16px;
+        }
+        .modal-content {
+          max-height: 95vh;
+        }
+        .modal-header {
+          padding: 15px 20px;
+        }
+        .modal-body {
+          padding: 20px;
         }
       }
     </style>
@@ -453,6 +664,7 @@
         <div class="actions">
           <button class="btn btn-confirm" id="btnFullConfirm">✓ אישור מלא</button>
           <button class="btn btn-custom" id="btnCustomConfirm">🔁 אישור עם שינויים</button>
+          <button class="btn btn-add-products" id="btnAddProducts" style="background: #2196F3; color: white; box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);">+ הוספת מוצרים שנשכחו</button>
         </div>
       </div>
 
@@ -464,6 +676,30 @@
       </div>
     </div>
 
+    <!-- Add Products Modal -->
+    <div class="modal-overlay" id="addProductsModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>הוספת מוצרים שנשכחו</h2>
+          <button class="modal-close" onclick="closeAddProductsModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-search">
+            <input type="text" id="modalSearchInput" placeholder="חיפוש מוצר..." oninput="filterModalProducts(this.value)">
+          </div>
+          <div id="modalCategoriesContainer"></div>
+          <div class="added-products-section" id="addedProductsSection" style="display: none;">
+            <h3>מוצרים שנוספו:</h3>
+            <div id="addedProductsList"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" style="background: #666; color: white;" onclick="closeAddProductsModal()">סגור</button>
+          <button class="btn btn-confirm" onclick="saveAddedProducts()">✓ שמור והוסף למשלוח</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       const SCRIPT_URL =
         'https://script.google.com/macros/s/AKfycbz4Af58mF9Oj7AW0MBKGTASVOuyGzDFe6JrQRAdDesH9-Tg4-shwx71WyLvtQCrtjGENg/exec';
@@ -471,6 +707,148 @@
       let deliveryData = null;
       let originalQuantities = {};
       let isSubmitting = false;
+      let addedProducts = {}; // Tracks products added from modal: {productKey: {name, category, quantity}}
+
+      // PRODUCT KEYS - WITH HANUKKAH 2025
+      const PRODUCT_KEYS = {
+        // Hanukkah 2025 Donuts
+        'קשיו גולד': 'hanukkah_cashew_gold',
+        "שוקולד קראנץ'": 'hanukkah_chocolate_crunch',
+        'גבינה פירורים': 'hanukkah_cheese_crumbs',
+        'סוכריות': 'hanukkah_candies',
+        'וניל פטל': 'hanukkah_vanilla_raspberry',
+        'פיסטוק': 'hanukkah_pistachio',
+        'מנגו פסיפלורה': 'hanukkah_mango_passionfruit',
+        'פטיסייר': 'hanukkah_patissier',
+        'קינמון': 'hanukkah_cinnamon',
+        'סנט הונורה': 'hanukkah_saint_honore',
+        // Sweet pastries
+        'קרואסון חמאה': 'sweet_croissant_butter',
+        'קרואסון שוקולד': 'sweet_croissant_chocolate',
+        'מאפה פירות': 'sweet_fruit_pastry',
+        'מאפה פקאן': 'sweet_pecan_pastry',
+        'מאפה שקדים שוקולד חלב': 'sweet_almond_milk_chocolate',
+        'סינבון': 'sweet_cinnamon',
+        'פאן סוויס': 'sweet_pain_suisse',
+        'מאפה פפיון': 'sweet_butterfly_pastry',
+        'מאפה שתי וערב': 'sweet_shti_veerev',
+        'רוגלך': 'sweet_rugelach',
+        "שוקולד צ'יפס": 'sweet_chocolate_chips',
+        'קרואסון פיסטוק': 'sweet_croissant_pistachio',
+        'קרואסון גבינה פירות יער': 'sweet_croissant_cheese_berry',
+        'קרואסון שקדים': 'sweet_croissant_almonds',
+        'קווין אמאן': 'sweet_kouign_amann',
+        // Salty
+        'לחמניה ריקה': 'salty_empty_bun',
+        'בייגל ריק': 'salty_empty_bagel',
+        'לחמנית פרג ריקה': 'salty_empty_poppy_bun',
+        'בורקס גבינה ריק': 'salty_empty_cheese_bourekas',
+        'מאפה מלוח (מלבן)': 'salty_rectangle_pastry',
+        "ריבועי פוקאצ'ה": 'salty_focaccia_squares',
+        "פוקאצ'ה אישית": 'salty_personal_focaccia',
+        'קיש ק.10': 'salty_quiche_10',
+        'בייגלסון': 'salty_bagelson',
+        'חלות בריוש': 'salty_brioche_challah',
+        'כיכר לחם': 'salty_bread_loaf',
+        // Sandwiches
+        'מחמצת סלק': 'sandwiches_beet_sourdough',
+        'מחמצת חצילים': 'sandwiches_eggplant_sourdough',
+        'בריוש פרג קממבר': 'sandwiches_brioche_poppy_camembert',
+        'כריך בורקס גבינות': 'sandwiches_bourekas_cheeses',
+        'כריך קרואסון חמאה': 'sandwiches_croissant_butter',
+        'כריך בייגל': 'sandwiches_bagel',
+        "כריך פוקאצ'ה": 'sandwiches_focaccia',
+        // Shelf products
+        'עוגת שמרים': 'shelf_yeast_cake',
+        'חלות': 'shelf_challah',
+        'בחושות': 'shelf_thick',
+        // Whole cakes
+        "פס פאדג' מסקרפונה": 'whole_cakes_fudge_mascarpone_strip',
+        'פס רושה אגוזי לוז': 'whole_cakes_rusha_hazelnut_strip',
+        'פס מנגו פסיפלורה': 'whole_cakes_mango_passionfruit_strip',
+        'פס קפה פקאן': 'whole_cakes_coffee_pecan_strip',
+        'טריקולד ק.20': 'whole_cakes_tricolor_20',
+        'פיסטוק פירות יער ק.20': 'whole_cakes_pistachio_berry_20',
+        'גבינה פירורים ק.20': 'whole_cakes_cheese_crumbs_20',
+        'גבינה אפויה ק.20': 'whole_cakes_baked_cheese_20',
+        'ריבוע רושה אגוזי לוז': 'whole_cakes_rusha_hazelnut_square',
+        'ריבוע קפה פקאן': 'whole_cakes_coffee_pecan_square',
+        "פאדג' שוקולד": 'whole_cakes_chocolate_fudge',
+        // Vitrina desserts
+        "קשיו דולצ'ה": 'vitrina_cashew_dolce',
+        'פיסטוק פירות יער': 'vitrina_pistachio_berry',
+        'פחזנית וניל פטל': 'vitrina_pheasant_vanilla_raspberry',
+        'סבלה פקאן': 'vitrina_sabla_pecan',
+        'טארט פירות': 'vitrina_fruit_tart',
+        'טארט לימון 100%': 'vitrina_lemon_tart_100',
+        '100 אחוז שוקולד': 'vitrina_chocolate_100',
+        'רושה אגוזי לוז': 'vitrina_rusha_hazelnut',
+        'פריז ברסט': 'vitrina_paris_brest',
+        'כדור שוקולד': 'vitrina_chocolate_ball',
+        'פחזנית וניל אישית': 'vitrina_personal_pheasant_vanilla',
+        // Cookies
+        'פלורנטין': 'cookies_florentine',
+        'קפה שקדים': 'cookies_coffee_almonds',
+        'שקדים לימון': 'cookies_almonds_lemon',
+        'פקאן': 'cookies_pecan',
+        'בראוניז': 'cookies_brownies',
+        'חמאה לוז': 'cookies_butter_hazelnut',
+        'פרמזן': 'cookies_parmesan',
+        'עוגיות תמרים': 'cookies_dates',
+        'אלפחורס': 'cookies_alfajores',
+        'פיסטוק לל"ג': 'cookies_pistachio_lag_baomer',
+        'קקאו שוקולד': 'cookies_cocoa_chocolate',
+        // Various
+        'מאפה פטריות': 'various_mushroom_pastry',
+        'מאפה גבינה ופירות יער': 'various_cheese_berry_pastry',
+        'עוגת גבינה באסקית': 'various_basque_cheesecake',
+        'חלמון מפוסטר': 'various_yolk_pasteurized',
+        'פרמזן חומר גלם': 'various_parmesan_raw',
+        'שמנת מתוקה': 'various_sweet_cream',
+        'חמאה': 'various_butter',
+        'פס פיסטוק פירות יער': 'various_pistachio_berry_strip',
+        'פרסבורגר פרג': 'various_pressburger_poppy'
+      };
+
+      // Categories Data
+      const CATEGORIES = {
+        hanukkah2025: {
+          name: 'סופגניות חנוכה 2025',
+          products: ['קשיו גולד', "שוקולד קראנץ'", 'גבינה פירורים', 'סוכריות', 'וניל פטל', 'פיסטוק', 'מנגו פסיפלורה', 'פטיסייר', 'קינמון', 'סנט הונורה']
+        },
+        sweet: {
+          name: 'מאפים מתוקים',
+          products: ['קרואסון חמאה', 'קרואסון שוקולד', 'מאפה פירות', 'מאפה פקאן', 'מאפה שקדים שוקולד חלב', 'סינבון', 'פאן סוויס', 'מאפה פפיון', 'מאפה שתי וערב', 'רוגלך', "שוקולד צ'יפס", 'קרואסון פיסטוק', 'קרואסון גבינה פירות יער', 'קרואסון שקדים', 'קווין אמאן']
+        },
+        salty: {
+          name: 'מלוחים',
+          products: ['לחמניה ריקה', 'בייגל ריק', 'לחמנית פרג ריקה', 'בורקס גבינה ריק', 'מאפה מלוח (מלבן)', "ריבועי פוקאצ'ה", "פוקאצ'ה אישית", 'קיש ק.10', 'בייגלסון', 'חלות בריוש', 'כיכר לחם']
+        },
+        sandwiches: {
+          name: 'כריכים',
+          products: ['מחמצת סלק', 'מחמצת חצילים', 'בריוש פרג קממבר', 'כריך בורקס גבינות', 'כריך קרואסון חמאה', 'כריך בייגל', "כריך פוקאצ'ה"]
+        },
+        shelf: {
+          name: 'מוצרי מדף',
+          products: ['עוגת שמרים', 'חלות', 'בחושות']
+        },
+        whole_cakes: {
+          name: 'עוגות שלמות',
+          products: ["פס פאדג' מסקרפונה", 'פס רושה אגוזי לוז', 'פס מנגו פסיפלורה', 'פס קפה פקאן', 'טריקולד ק.20', 'פיסטוק פירות יער ק.20', 'גבינה פירורים ק.20', 'גבינה אפויה ק.20', 'ריבוע רושה אגוזי לוז', 'ריבוע קפה פקאן', "פאדג' שוקולד"]
+        },
+        vitrina: {
+          name: 'קינוחי ויטרינה',
+          products: ["קשיו דולצ'ה", 'פיסטוק פירות יער', 'פחזנית וניל פטל', 'סבלה פקאן', 'טארט פירות', 'טארט לימון 100%', '100 אחוז שוקולד', 'רושה אגוזי לוז', 'פריז ברסט', 'כדור שוקולד', 'פחזנית וניל אישית']
+        },
+        cookies: {
+          name: 'עוגיות',
+          products: ['פלורנטין', 'קפה שקדים', 'שקדים לימון', 'פקאן', 'בראוניז', 'חמאה לוז', 'פרמזן', 'עוגיות תמרים', 'אלפחורס', 'פיסטוק לל"ג', 'קקאו שוקולד']
+        },
+        various: {
+          name: 'מוצרים שונים',
+          products: ['מאפה פטריות', 'מאפה גבינה ופירות יער', 'עוגת גבינה באסקית', 'חלמון מפוסטר', 'פרמזן חומר גלם', 'שמנת מתוקה', 'חמאה', 'פס פיסטוק פירות יער', 'פרסבורגר פרג']
+        }
+      };
 
       function getUrlParams() {
         const params = new URLSearchParams(window.location.search);
@@ -620,6 +998,7 @@
 
         document.getElementById('btnFullConfirm').addEventListener('click', handleFullConfirm);
         document.getElementById('btnCustomConfirm').addEventListener('click', handleCustomConfirm);
+        document.getElementById('btnAddProducts').addEventListener('click', openAddProductsModal);
       }
 
       function changeQuantity(productKey, delta) {
@@ -750,6 +1129,231 @@
         const errorDiv = document.getElementById('errorState');
         errorDiv.innerHTML = `<div class="error"><strong>שגיאה:</strong> ${message}</div>`;
         errorDiv.style.display = 'block';
+      }
+
+      // ============================================================================
+      // ADD PRODUCTS MODAL FUNCTIONS
+      // ============================================================================
+
+      function openAddProductsModal() {
+        document.getElementById('addProductsModal').classList.add('show');
+        renderModalCategories();
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeAddProductsModal() {
+        document.getElementById('addProductsModal').classList.remove('show');
+        document.getElementById('modalSearchInput').value = '';
+        document.body.style.overflow = '';
+      }
+
+      function renderModalCategories() {
+        const container = document.getElementById('modalCategoriesContainer');
+        container.innerHTML = '';
+
+        Object.entries(CATEGORIES).forEach(([categoryKey, categoryData]) => {
+          const categoryDiv = document.createElement('div');
+          categoryDiv.className = 'modal-category';
+
+          const header = document.createElement('div');
+          header.className = 'modal-category-header';
+          header.innerHTML = `
+            <span>${categoryData.name}</span>
+            <span class="modal-category-arrow">▼</span>
+          `;
+          header.onclick = () => toggleModalCategory(categoryKey);
+          categoryDiv.appendChild(header);
+
+          const productsDiv = document.createElement('div');
+          productsDiv.className = 'modal-category-products';
+          productsDiv.id = `modal-cat-${categoryKey}`;
+
+          categoryData.products.forEach(productName => {
+            const productKey = PRODUCT_KEYS[productName];
+            if (!productKey) return;
+
+            // Check if already in delivery or added
+            const alreadyInDelivery = deliveryData.products.some(p => p.key === productKey);
+            const alreadyAdded = addedProducts[productKey];
+
+            const productItem = document.createElement('div');
+            productItem.className = 'modal-product-item';
+            productItem.dataset.productName = productName.toLowerCase();
+
+            productItem.innerHTML = `
+              <div class="modal-product-name">${productName}</div>
+              <div class="modal-product-controls">
+                ${alreadyInDelivery ? '<span style="color: #666; font-size: 13px;">כבר במשלוח</span>' :
+                  alreadyAdded ? '<span style="color: #4caf50; font-size: 13px;">נוסף ✓</span>' :
+                  `<button class="modal-add-btn" onclick="addProductToList('${productKey}', '${productName.replace(/'/g, "\\'")}', '${categoryData.name}')">הוסף +</button>`
+                }
+              </div>
+            `;
+
+            productsDiv.appendChild(productItem);
+          });
+
+          categoryDiv.appendChild(productsDiv);
+          container.appendChild(categoryDiv);
+        });
+      }
+
+      function toggleModalCategory(categoryKey) {
+        const header = document.querySelector(`#modal-cat-${categoryKey}`).previousElementSibling;
+        const productsDiv = document.getElementById(`modal-cat-${categoryKey}`);
+
+        header.classList.toggle('active');
+        productsDiv.classList.toggle('active');
+      }
+
+      function filterModalProducts(searchTerm) {
+        const lowerSearch = searchTerm.toLowerCase();
+        const productItems = document.querySelectorAll('.modal-product-item');
+
+        productItems.forEach(item => {
+          const productName = item.dataset.productName;
+          if (productName.includes(lowerSearch)) {
+            item.style.display = 'flex';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+      }
+
+      function addProductToList(productKey, productName, categoryName) {
+        // Add to addedProducts tracker
+        addedProducts[productKey] = {
+          name: productName,
+          category: categoryName,
+          quantity: 1
+        };
+
+        // Update UI
+        renderAddedProductsList();
+        renderModalCategories(); // Refresh to show "נוסף" status
+      }
+
+      function renderAddedProductsList() {
+        const section = document.getElementById('addedProductsSection');
+        const list = document.getElementById('addedProductsList');
+
+        if (Object.keys(addedProducts).length === 0) {
+          section.style.display = 'none';
+          return;
+        }
+
+        section.style.display = 'block';
+        list.innerHTML = '';
+
+        Object.entries(addedProducts).forEach(([productKey, product]) => {
+          const tag = document.createElement('div');
+          tag.className = 'added-product-tag';
+          tag.innerHTML = `
+            <span>${product.name} (${product.quantity})</span>
+            <button class="remove-added-product" onclick="removeAddedProduct('${productKey}')">×</button>
+          `;
+          list.appendChild(tag);
+        });
+      }
+
+      function removeAddedProduct(productKey) {
+        delete addedProducts[productKey];
+        renderAddedProductsList();
+        renderModalCategories(); // Refresh to remove "נוסף" status
+      }
+
+      function saveAddedProducts() {
+        if (Object.keys(addedProducts).length === 0) {
+          alert('לא נבחרו מוצרים להוספה');
+          return;
+        }
+
+        // Add products to the main display
+        Object.entries(addedProducts).forEach(([productKey, product]) => {
+          // Find or create the category section
+          let categorySection = Array.from(document.querySelectorAll('.category-header')).find(
+            header => header.textContent === product.category
+          )?.closest('.category-section');
+
+          if (!categorySection) {
+            // Create new category section
+            categorySection = document.createElement('div');
+            categorySection.className = 'category-section';
+
+            const header = document.createElement('div');
+            header.className = 'category-header';
+            header.textContent = product.category;
+            categorySection.appendChild(header);
+
+            const table = document.createElement('table');
+            table.className = 'products-table';
+            table.innerHTML = `
+              <thead>
+                <tr>
+                  <th>שם מוצר</th>
+                  <th class="quantity-col">כמות</th>
+                  <th>הערות</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            `;
+            categorySection.appendChild(table);
+            document.getElementById('productsContainer').appendChild(categorySection);
+          }
+
+          // Add product row to table
+          const tbody = categorySection.querySelector('tbody');
+          const tr = document.createElement('tr');
+          tr.style.background = '#e3f2fd'; // Highlight added products
+          tr.innerHTML = `
+            <td><div class="product-name">${product.name} <span style="color: #2196F3; font-size: 12px; font-weight: bold;">(נוסף)</span></div></td>
+            <td>
+              <div class="quantity-input-wrapper">
+                <button
+                  class="quantity-btn minus"
+                  data-product-key="${productKey}"
+                  onclick="changeQuantity('${productKey}', -1)"
+                  disabled
+                >−</button>
+                <div
+                  class="quantity-display changed"
+                  id="qty-${productKey}"
+                  data-original="0"
+                  data-product-key="${productKey}"
+                  data-product-name="${product.name}"
+                >${product.quantity}</div>
+                <button
+                  class="quantity-btn plus"
+                  data-product-key="${productKey}"
+                  onclick="changeQuantity('${productKey}', 1)"
+                >+</button>
+              </div>
+            </td>
+            <td><div class="product-notes">מוצר שנוסף מאוחר יותר</div></td>
+          `;
+          tbody.appendChild(tr);
+
+          // Add to deliveryData for submission
+          deliveryData.products.push({
+            key: productKey,
+            name: product.name,
+            category: product.category,
+            quantity: product.quantity,
+            notes: 'מוצר שנוסף מאוחר יותר'
+          });
+        });
+
+        // Update total products count
+        document.getElementById('totalProducts').textContent = deliveryData.products.length;
+
+        // Save count before clearing
+        const addedCount = Object.keys(addedProducts).length;
+
+        // Clear added products and close modal
+        addedProducts = {};
+        closeAddProductsModal();
+
+        alert(`נוספו ${addedCount} מוצרים למשלוח בהצלחה!`);
       }
 
       window.addEventListener('DOMContentLoaded', loadDeliveryData);

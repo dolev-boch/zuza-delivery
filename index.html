@@ -143,12 +143,6 @@
         box-shadow: var(--shadow);
       }
 
-      /* Special styling for Hanukkah category */
-      .category-card.hanukkah {
-        background: linear-gradient(135deg, #e3f2fd 0%, #fff9e5 100%);
-        border: 2px solid var(--hanukkah-gold);
-        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
-      }
 
       .category-header {
         background: var(--dark-green);
@@ -163,11 +157,6 @@
         user-select: none;
       }
 
-      /* Special styling for Hanukkah category header */
-      .category-header.hanukkah {
-        background: linear-gradient(135deg, var(--hanukkah-blue) 0%, #1565c0 100%);
-        color: var(--white);
-      }
 
       .category-count {
         background: var(--gold);
@@ -178,10 +167,6 @@
         font-weight: 700;
       }
 
-      .category-count.hanukkah {
-        background: var(--hanukkah-gold);
-        color: var(--hanukkah-blue);
-      }
 
       .category-arrow {
         font-size: 12px;
@@ -993,7 +978,8 @@
         'וניל פטל': 'hanukkah_vanilla_raspberry',
         פיסטוק: 'hanukkah_pistachio',
         'מנגו פסיפלורה': 'hanukkah_mango_passionfruit',
-        'פטיסייר קינמון': 'hanukkah_patissier_cinnamon',
+        פטיסייר: 'hanukkah_patissier',
+        קינמון: 'hanukkah_cinnamon',
         'סנט הונורה': 'hanukkah_saint_honore',
 
         // Sweet pastries - מאפים מתוקים
@@ -1103,7 +1089,8 @@
             'וניל פטל',
             'פיסטוק',
             'מנגו פסיפלורה',
-            'פטיסייר קינמון',
+            'פטיסייר',
+            'קינמון',
             'סנט הונורה',
           ],
           isSpecial: true,
@@ -1445,23 +1432,18 @@
       }
 
       function renderCategory(categoryKey, categoryData) {
-        const isHanukkah = categoryData.isSpecial === true;
-        const categoryClass = isHanukkah ? 'category-card hanukkah' : 'category-card';
-        const headerClass = isHanukkah ? 'category-header hanukkah' : 'category-header';
-        const countClass = isHanukkah ? 'category-count hanukkah' : 'category-count';
-
         return `
-          <section class="${categoryClass}">
-            <div 
-              class="${headerClass}" 
+          <section class="category-card">
+            <div
+              class="category-header"
               data-category="${categoryKey}"
               onclick="toggleCategory('${categoryKey}')"
               role="button"
               tabindex="0"
             >
-              <span>${isHanukkah ? '🕎 ' : ''}${categoryData.name}</span>
+              <span>${categoryData.name}</span>
               <div style="display: flex; align-items: center; gap: 10px;">
-                <span class="${countClass}">${categoryData.products.length}</span>
+                <span class="category-count">${categoryData.products.length}</span>
                 <span class="category-arrow">▼</span>
               </div>
             </div>
@@ -1750,7 +1732,8 @@
             const quantity = formData.get(`${productKey}_quantity`) || '0';
             const notes = formData.get(`${productKey}_notes`) || '';
 
-            if (quantity !== '0' || notes) {
+            // Only add products with quantity > 0
+            if (parseInt(quantity) > 0) {
               data.products.push({
                 key: productKey,
                 name: productName,
@@ -1768,13 +1751,16 @@
             const quantity = formData.get(`custom_${i}_quantity`) || '0';
             const notes = formData.get(`custom_product_notes_${i}`) || '';
 
-            data.products.push({
-              key: `custom_${i}`,
-              name: name,
-              category: 'אחרים',
-              quantity: quantity,
-              notes: notes,
-            });
+            // Only add custom products with quantity > 0
+            if (parseInt(quantity) > 0) {
+              data.products.push({
+                key: `custom_${i}`,
+                name: name,
+                category: 'אחרים',
+                quantity: quantity,
+                notes: notes,
+              });
+            }
           }
         }
 
