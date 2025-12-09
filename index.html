@@ -29,6 +29,8 @@
         --error: #f44336;
         --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.15);
+        --hanukkah-blue: #4a90e2;
+        --hanukkah-gold: #ffd700;
       }
 
       body {
@@ -141,6 +143,13 @@
         box-shadow: var(--shadow);
       }
 
+      /* Special styling for Hanukkah category */
+      .category-card.hanukkah {
+        background: linear-gradient(135deg, #e3f2fd 0%, #fff9e5 100%);
+        border: 2px solid var(--hanukkah-gold);
+        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+      }
+
       .category-header {
         background: var(--dark-green);
         color: var(--gold);
@@ -154,6 +163,12 @@
         user-select: none;
       }
 
+      /* Special styling for Hanukkah category header */
+      .category-header.hanukkah {
+        background: linear-gradient(135deg, var(--hanukkah-blue) 0%, #1565c0 100%);
+        color: var(--white);
+      }
+
       .category-count {
         background: var(--gold);
         color: var(--dark-green);
@@ -161,6 +176,11 @@
         border-radius: 12px;
         font-size: 13px;
         font-weight: 700;
+      }
+
+      .category-count.hanukkah {
+        background: var(--hanukkah-gold);
+        color: var(--hanukkah-blue);
       }
 
       .category-arrow {
@@ -948,7 +968,7 @@
       // Configuration
       const CONFIG = {
         API_URL:
-          'https://script.google.com/macros/s/AKfycbwA1hAEHCEO2uGC9ng-L0o809HZW90j7LB0axj0X61dO3kiK6a93TeXSRfVTam6RbMOtQ/exec',
+          'https://script.google.com/macros/s/AKfycbz4Af58mF9Oj7AW0MBKGTASVOuyGzDFe6JrQRAdDesH9-Tg4-shwx71WyLvtQCrtjGENg/exec',
         MAX_QUANTITY: 50,
         QUICK_AMOUNTS: [2, 4, 5, 10],
         MAX_RETRIES: 3,
@@ -963,8 +983,19 @@
         reviewData: null,
       };
 
-      // PRODUCT KEYS
+      // PRODUCT KEYS - WITH HANUKKAH 2025
       const PRODUCT_KEYS = {
+        // Hanukkah 2025 Donuts - סופגניות חנוכה 2025
+        'קשיו גולד': 'hanukkah_cashew_gold',
+        "שוקולד קראנץ'": 'hanukkah_chocolate_crunch',
+        'גבינה פירורים': 'hanukkah_cheese_crumbs',
+        סוכריות: 'hanukkah_candies',
+        'וניל פטל': 'hanukkah_vanilla_raspberry',
+        פיסטוק: 'hanukkah_pistachio',
+        'מנגו פסיפלורה': 'hanukkah_mango_passionfruit',
+        'פטיסייר קינמון': 'hanukkah_patissier_cinnamon',
+        'סנט הונורה': 'hanukkah_saint_honore',
+
         // Sweet pastries - מאפים מתוקים
         'קרואסון חמאה': 'sweet_croissant_butter',
         'קרואסון שוקולד': 'sweet_croissant_chocolate',
@@ -1060,8 +1091,23 @@
         'פרסבורגר פרג': 'various_pressburger_poppy',
       };
 
-      // Categories Data
+      // Categories Data - WITH HANUKKAH 2025 AT THE BEGINNING
       const CATEGORIES = {
+        hanukkah2025: {
+          name: 'סופגניות חנוכה 2025',
+          products: [
+            'קשיו גולד',
+            "שוקולד קראנץ'",
+            'גבינה פירורים',
+            'סוכריות',
+            'וניל פטל',
+            'פיסטוק',
+            'מנגו פסיפלורה',
+            'פטיסייר קינמון',
+            'סנט הונורה',
+          ],
+          isSpecial: true,
+        },
         sweet: {
           name: 'מאפים מתוקים',
           products: [
@@ -1399,18 +1445,23 @@
       }
 
       function renderCategory(categoryKey, categoryData) {
+        const isHanukkah = categoryData.isSpecial === true;
+        const categoryClass = isHanukkah ? 'category-card hanukkah' : 'category-card';
+        const headerClass = isHanukkah ? 'category-header hanukkah' : 'category-header';
+        const countClass = isHanukkah ? 'category-count hanukkah' : 'category-count';
+
         return `
-          <section class="category-card">
+          <section class="${categoryClass}">
             <div 
-              class="category-header" 
+              class="${headerClass}" 
               data-category="${categoryKey}"
               onclick="toggleCategory('${categoryKey}')"
               role="button"
               tabindex="0"
             >
-              <span>${categoryData.name}</span>
+              <span>${isHanukkah ? '🕎 ' : ''}${categoryData.name}</span>
               <div style="display: flex; align-items: center; gap: 10px;">
-                <span class="category-count">${categoryData.products.length}</span>
+                <span class="${countClass}">${categoryData.products.length}</span>
                 <span class="category-arrow">▼</span>
               </div>
             </div>
@@ -1802,7 +1853,7 @@
           });
         });
 
-        console.log('Zuza Patisserie - Form Ready with Review Step');
+        console.log('Zuza Patisserie - Form Ready with Hanukkah 2025 + Review Step');
         console.log('Product mappings loaded:', Object.keys(PRODUCT_KEYS).length);
       }
 

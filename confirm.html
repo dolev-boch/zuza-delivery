@@ -146,7 +146,7 @@
         font-size: 13px;
         color: #666;
       }
-      
+
       /* Quantity Controls with Plus/Minus Buttons */
       .quantity-input-wrapper {
         display: flex;
@@ -441,8 +441,9 @@
           <div class="instruction">
             <h2>🔍 בדוק והתאם כמויות</h2>
             <p>
-              עבור על המוצרים ובדוק שהכמויות תואמות למה שהתקבל בפועל. השתמש בכפתורי + ו- לשינוי הכמויות. אם הכל תואם - לחץ על "אישור
-              מלא". אם יש הבדלים - שנה את הכמויות ולחץ "אישור עם שינויים".
+              עבור על המוצרים ובדוק שהכמויות תואמות למה שהתקבל בפועל. השתמש בכפתורי + ו- לשינוי
+              הכמויות. אם הכל תואם - לחץ על "אישור מלא". אם יש הבדלים - שנה את הכמויות ולחץ "אישור
+              עם שינויים".
             </p>
           </div>
 
@@ -451,7 +452,7 @@
 
         <div class="actions">
           <button class="btn btn-confirm" id="btnFullConfirm">✓ אישור מלא</button>
-          <button class="btn btn-custom" id="btnCustomConfirm">📝 אישור עם שינויים</button>
+          <button class="btn btn-custom" id="btnCustomConfirm">🔁 אישור עם שינויים</button>
         </div>
       </div>
 
@@ -465,7 +466,7 @@
 
     <script>
       const SCRIPT_URL =
-        'https://script.google.com/macros/s/AKfycbwA1hAEHCEO2uGC9ng-L0o809HZW90j7LB0axj0X61dO3kiK6a93TeXSRfVTam6RbMOtQ/exec';
+        'https://script.google.com/macros/s/AKfycbz4Af58mF9Oj7AW0MBKGTASVOuyGzDFe6JrQRAdDesH9-Tg4-shwx71WyLvtQCrtjGENg/exec';
 
       let deliveryData = null;
       let originalQuantities = {};
@@ -480,17 +481,14 @@
       }
 
       function formatDateTime(submissionTime) {
-        // submissionTime should be in format: DD/MM/YYYY HH:MM
         console.log('Formatting time:', submissionTime);
 
         if (submissionTime && typeof submissionTime === 'string') {
-          // If it's already in DD/MM/YYYY HH:MM format, return as is
           if (submissionTime.match(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/)) {
             return submissionTime;
           }
         }
 
-        // If we don't have valid submission time, return error message
         console.error('Invalid submission time format:', submissionTime);
         return 'זמן לא זמין';
       }
@@ -628,18 +626,19 @@
         const display = document.getElementById(`qty-${productKey}`);
         const currentQty = parseInt(display.textContent);
         const newQty = Math.max(0, currentQty + delta);
-        
+
         display.textContent = newQty;
-        
+
         const original = parseInt(display.dataset.original);
         if (newQty !== original) {
           display.classList.add('changed');
         } else {
           display.classList.remove('changed');
         }
-        
-        // Update minus button state
-        const minusBtn = document.querySelector(`.quantity-btn.minus[data-product-key="${productKey}"]`);
+
+        const minusBtn = document.querySelector(
+          `.quantity-btn.minus[data-product-key="${productKey}"]`
+        );
         if (minusBtn) {
           minusBtn.disabled = newQty === 0;
         }
@@ -685,7 +684,6 @@
           btnFull.disabled = true;
           btnCustom.disabled = true;
 
-          // Show loading overlay
           document.getElementById('loadingOverlay').classList.add('show');
 
           const params = getUrlParams();
@@ -710,7 +708,7 @@
           console.log('Submitting confirmation:', confirmationData);
 
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+          const timeoutId = setTimeout(() => controller.abort(), 60000);
 
           const response = await fetch(SCRIPT_URL, {
             method: 'POST',
@@ -726,10 +724,8 @@
           clearTimeout(timeoutId);
           console.log('Request completed');
 
-          // Hide loading overlay
           document.getElementById('loadingOverlay').classList.remove('show');
 
-          // Show success
           document.getElementById('mainContent').style.display = 'none';
           document.getElementById('successState').style.display = 'block';
         } catch (error) {
@@ -758,7 +754,6 @@
 
       window.addEventListener('DOMContentLoaded', loadDeliveryData);
 
-      // Prevent accidental page unload during submission
       window.addEventListener('beforeunload', (e) => {
         if (isSubmitting) {
           e.preventDefault();
