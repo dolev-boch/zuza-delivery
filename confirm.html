@@ -540,6 +540,52 @@
       .remove-added-product:hover {
         background: #ffebee;
       }
+      .custom-product-section {
+        background: #fff3e0;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-right: 4px solid #ff9800;
+      }
+      .custom-product-section h3 {
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: #e65100;
+      }
+      .custom-product-input-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .custom-product-input-group input {
+        flex: 1;
+        padding: 10px;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        font-size: 15px;
+      }
+      .custom-product-input-group input:focus {
+        outline: none;
+        border-color: #ff9800;
+      }
+      .custom-product-add-btn {
+        padding: 10px 24px;
+        background: #ff9800;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.2s;
+      }
+      .custom-product-add-btn:hover {
+        background: #f57c00;
+      }
+      .custom-product-add-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
 
       @media (max-width: 768px) {
         body {
@@ -701,6 +747,18 @@
               placeholder="חיפוש מוצר..."
               oninput="filterModalProducts(this.value)"
             />
+          </div>
+          <div class="custom-product-section">
+            <h3>➕ הוספת מוצר חדש (אחרים)</h3>
+            <div class="custom-product-input-group">
+              <input
+                type="text"
+                id="customProductInput"
+                placeholder="שם המוצר..."
+                onkeypress="if(event.key==='Enter') addCustomProduct()"
+              />
+              <button class="custom-product-add-btn" onclick="addCustomProduct()">הוסף +</button>
+            </div>
           </div>
           <div id="modalCategoriesContainer"></div>
           <div class="added-products-section" id="addedProductsSection" style="display: none">
@@ -1349,6 +1407,47 @@
         // Update UI
         renderAddedProductsList();
         renderModalCategories(); // Refresh to show "נוסף" status
+      }
+
+      function addCustomProduct() {
+        const input = document.getElementById('customProductInput');
+        const productName = input.value.trim();
+
+        if (!productName) {
+          alert('נא להזין שם מוצר');
+          return;
+        }
+
+        // Generate unique custom product key
+        const sanitizedName = productName.replace(/[^\u0590-\u05FFa-zA-Z0-9]/g, '_');
+        const productKey = `custom_${sanitizedName}`;
+
+        // Check if already added
+        if (addedProducts[productKey]) {
+          alert('מוצר זה כבר נוסף');
+          input.value = '';
+          return;
+        }
+
+        // Check if already in delivery
+        const alreadyInDelivery = deliveryData.products.some((p) => p.name === productName);
+        if (alreadyInDelivery) {
+          alert('מוצר זה כבר קיים במשלוח');
+          input.value = '';
+          return;
+        }
+
+        // Add to addedProducts with אחרים category
+        addedProducts[productKey] = {
+          name: productName,
+          category: 'אחרים',
+          quantity: 1,
+        };
+
+        // Update UI
+        renderAddedProductsList();
+        input.value = ''; // Clear input
+        input.focus(); // Keep focus for easy multiple entries
       }
 
       function renderAddedProductsList() {
