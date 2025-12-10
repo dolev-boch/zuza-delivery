@@ -19,7 +19,7 @@ const FIRST_SHEET_TO_UPDATE = 10; // Start from sheet index 10 (0-based, so 11th
 const LAST_SHEET_TO_UPDATE = 31;  // End at sheet index 31 (0-based, so 32nd sheet)
 const HANUKKAH_START_ROW = 80;
 
-// Hanukkah 2025 Products - Rows 80-89
+// Hanukkah 2025 Products - Rows 80-88
 const HANUKKAH_PRODUCTS = [
   { row: 80, name: 'קשיו גולד', category: 'סופגניות חנוכה 2025', price: 19 },
   { row: 81, name: "שוקולד קראנץ'", category: 'סופגניות חנוכה 2025', price: 19 },
@@ -29,7 +29,7 @@ const HANUKKAH_PRODUCTS = [
   { row: 85, name: 'פיסטוק', category: 'סופגניות חנוכה 2025', price: 19 },
   { row: 86, name: 'מנגו פסיפלורה', category: 'סופגניות חנוכה 2025', price: 17 },
   { row: 87, name: 'פטיסייר קינמון', category: 'סופגניות חנוכה 2025', price: 15 },
-  { row: 89, name: 'סנט הונורה', category: 'סופגניות חנוכה 2025', price: 19 }
+  { row: 88, name: 'סנט הונורה', category: 'סופגניות חנוכה 2025', price: 19 }
 ];
 
 /**

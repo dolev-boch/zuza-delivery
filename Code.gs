@@ -1337,7 +1337,7 @@ function buildConfirmationCompleteEmailPlain(deliveryDate, certNumber, fillerNam
 // ============================================================================
 
 const PRODUCT_ROW_MAP = {
-  // HANUKKAH 2025 DONUTS - Rows 80-89 (9 products) - Sheets 10-31 only
+  // HANUKKAH 2025 DONUTS - Rows 80-88 (9 products) - Sheets 10-31 only
   'hanukkah_cashew_gold': { row: 80, name: 'קשיו גולד', category: 'סופגניות חנוכה 2025', price: 19 },
   'hanukkah_chocolate_crunch': { row: 81, name: "שוקולד קראנץ'", category: 'סופגניות חנוכה 2025', price: 19 },
   'hanukkah_cheese_crumbs': { row: 82, name: 'גבינה פירורים', category: 'סופגניות חנוכה 2025', price: 17 },
@@ -1346,7 +1346,7 @@ const PRODUCT_ROW_MAP = {
   'hanukkah_pistachio': { row: 85, name: 'פיסטוק', category: 'סופגניות חנוכה 2025', price: 19 },
   'hanukkah_mango_passionfruit': { row: 86, name: 'מנגו פסיפלורה', category: 'סופגניות חנוכה 2025', price: 17 },
   'hanukkah_patissier': { row: 87, name: 'פטיסייר קינמון', category: 'סופגניות חנוכה 2025', price: 15 },
-  'hanukkah_saint_honore': { row: 89, name: 'סנט הונורה', category: 'סופגניות חנוכה 2025', price: 19 },
+  'hanukkah_saint_honore': { row: 88, name: 'סנט הונורה', category: 'סופגניות חנוכה 2025', price: 19 },
 
   // Sweet pastries - מאפים מתוקים
   'sweet_croissant_butter': { row: 2, name: 'קרואסון חמאה', category: 'מאפים מתוקים', price: 0 },

@@ -8,26 +8,29 @@ Updated Hanukkah product name from "פטיסייר" to "פטיסייר קינמ�
 
 ## Changes Made
 
-### 1. ✅ [Code.gs](Code.gs#L1334-L1343) - Backend Product Mapping
+### 1. ✅ [Code.gs](Code.gs#L1340-L1349) - Backend Product Mapping
 
-**Line 1334:** Updated comment
+**Line 1340:** Updated comment
 ```javascript
 // OLD: // HANUKKAH 2025 DONUTS - Rows 80-89 (10 products) - Sheets 10-31 only
-// NEW: // HANUKKAH 2025 DONUTS - Rows 80-89 (9 products) - Sheets 10-31 only
+// NEW: // HANUKKAH 2025 DONUTS - Rows 80-88 (9 products) - Sheets 10-31 only
 ```
 
-**Line 1342:** Updated product name
+**Line 1348:** Updated product name for row 87
 ```javascript
 // OLD: 'hanukkah_patissier': { row: 87, name: 'פטיסייר', category: 'סופגניות חנוכה 2025', price: 15 },
 // NEW: 'hanukkah_patissier': { row: 87, name: 'פטיסייר קינמון', category: 'סופגניות חנוכה 2025', price: 15 },
 ```
 
-**Line 1343:** Removed separate קינמון entry
+**Line 1349:** Moved "סנט הונורה" to row 88
 ```javascript
-// REMOVED: 'hanukkah_cinnamon': { row: 88, name: 'קינמון', category: 'סופגניות חנוכה 2025', price: 15 },
+// OLD: 'hanukkah_saint_honore': { row: 89, name: 'סנט הונורה', category: 'סופגניות חנוכה 2025', price: 19 },
+// NEW: 'hanukkah_saint_honore': { row: 88, name: 'סנט הונורה', category: 'סופגניות חנוכה 2025', price: 19 },
 ```
 
-**Result:** Now 9 Hanukkah products instead of 10.
+**Removed:** Separate קינמון entry (was row 88)
+
+**Result:** Now 9 Hanukkah products in rows 80-88 (row 89+ available for future products).
 
 ---
 
@@ -96,10 +99,10 @@ Updated Hanukkah product name from "פטיסייר" to "פטיסייר קינמ�
 
 // NEW:
 { row: 87, name: 'פטיסייר קינמון', category: 'סופגניות חנוכה 2025', price: 15 },
-{ row: 89, name: 'סנט הונורה', category: 'סופגניות חנוכה 2025', price: 19 }
+{ row: 88, name: 'סנט הונורה', category: 'סופגניות חנוכה 2025', price: 19 }
 ```
 
-**Note:** Row 88 is now skipped (will remain empty in sheets).
+**Note:** Row 89 is now available for future products. "סנט הונורה" moved to row 88.
 
 ---
 
@@ -149,21 +152,23 @@ Since you mentioned you'll manually adjust row 87 in Google Sheets:
 2. **For Each Sheet 11-32 (indices 10-31):**
    - Go to **Row 87, Column A**
    - Change "פטיסייר" to **"פטיסייר קינמון"**
-   - **Row 88** can be left empty or cleared (it's no longer used)
-   - **Row 89** should remain "סנט הונורה" (unchanged)
+   - Go to **Row 88, Column A**
+   - Move "סנט הונורה" here (if it's currently in row 89)
+   - **Row 89** should be cleared/empty
 
 3. **Summary Sheet (סיכום חודש):**
-   - If Hanukkah products are listed there (rows 81-90)
+   - If Hanukkah products are listed there (rows 81-89)
    - Update row 87 to "פטיסייר קינמון"
-   - Remove or clear row 88 if it exists
+   - Ensure row 88 has "סנט הונורה"
+   - Clear row 89 if it has any Hanukkah product data
 
-### Why Row 88 is Skipped:
+### Updated Row Structure:
 
 - Row 87: **פטיסייר קינמון** (combined product)
-- Row 88: **Empty** (no longer used)
-- Row 89: **סנט הונורה** (unchanged)
+- Row 88: **סנט הונורה** (moved from row 89)
+- Row 89: **Empty** (available for future products)
 
-This maintains the original row structure while removing the duplicate product.
+This creates a continuous row structure without gaps.
 
 ---
 
