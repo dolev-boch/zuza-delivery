@@ -663,9 +663,11 @@ function processConfirmation(sheet, confirmedProducts, fullConfirmation, submiss
 
 function updateCustomProductConfirmation(sheet, product, currentTime, originalQuantity, confirmedQuantity) {
   const productName = product.name;
+  const productCategory = product.category || 'אחרים';
   const lastRow = sheet.getLastRow();
   let foundRow = null;
 
+  // Search for existing custom product
   for (let row = CUSTOM_PRODUCTS_START_ROW; row <= lastRow; row++) {
     const existingName = sheet.getRange(row, COLUMNS.PRODUCT_NAME).getValue();
     if (existingName === productName) {
@@ -675,6 +677,7 @@ function updateCustomProductConfirmation(sheet, product, currentTime, originalQu
   }
 
   if (foundRow) {
+    // Update existing product
     sheet.getRange(foundRow, COLUMNS.QUANTITY).setValue(confirmedQuantity);
 
     const currentNotes = sheet.getRange(foundRow, COLUMNS.NOTES).getValue() || '';
@@ -685,6 +688,21 @@ function updateCustomProductConfirmation(sheet, product, currentTime, originalQu
 
     if (confirmedQuantity > 0) {
       sheet.getRange(foundRow, 1, 1, 5).setBackground('#fff3cd');
+    }
+  } else {
+    // Create new row for product added during confirmation
+    const newRow = lastRow + 1;
+    Logger.log(`Creating new custom product row ${newRow} for: ${productName}`);
+
+    sheet.getRange(newRow, COLUMNS.PRODUCT_NAME).setValue(productName);
+    sheet.getRange(newRow, COLUMNS.CATEGORY).setValue(productCategory);
+    sheet.getRange(newRow, COLUMNS.QUANTITY).setValue(confirmedQuantity);
+    sheet.getRange(newRow, COLUMNS.NOTES).setValue('נוסף באישור');
+    sheet.getRange(newRow, COLUMNS.LAST_UPDATED).setValue(currentTime);
+
+    // Highlight as new product added during confirmation
+    if (confirmedQuantity > 0) {
+      sheet.getRange(newRow, 1, 1, 5).setBackground('#fff3cd');
     }
   }
 }

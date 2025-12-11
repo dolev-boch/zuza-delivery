@@ -781,7 +781,7 @@
 
     <script>
       const SCRIPT_URL =
-        'https://script.google.com/macros/s/AKfycbyR-zzm8WGJX5sMaZVCWzC7gPwLKGxvkqsz5Qw4-XD2cmLAYgz-rstH9crI3Y66V5E/exec';
+        'https://script.google.com/macros/s/AKfycbw_KMlXi8U09e_rzbRRUKrB0TD5Mx2u1P3IRUyztQxRnnVSaenoXXNQLZEVIqaazX9h8w/exec';
 
       let deliveryData = null;
       let originalQuantities = {};
@@ -1143,12 +1143,13 @@
                                     onclick="changeQuantity('${product.key}', -1)"
                                     ${product.quantity === 0 ? 'disabled' : ''}
                                 >−</button>
-                                <div 
-                                    class="quantity-display" 
+                                <div
+                                    class="quantity-display"
                                     id="qty-${product.key}"
                                     data-original="${product.quantity}"
                                     data-product-key="${product.key}"
                                     data-product-name="${product.name}"
+                                    data-product-category="${product.category}"
                                 >${product.quantity}</div>
                                 <button 
                                     class="quantity-btn plus" 
@@ -1242,6 +1243,7 @@
             confirmedProducts.push({
               key: display.dataset.productKey,
               name: display.dataset.productName,
+              category: display.dataset.productCategory,
               quantity: parseInt(display.textContent) || 0,
             });
           });
@@ -1538,6 +1540,7 @@
                   data-original="0"
                   data-product-key="${productKey}"
                   data-product-name="${product.name}"
+                  data-product-category="${product.category}"
                 >${product.quantity}</div>
                 <button
                   class="quantity-btn plus"
