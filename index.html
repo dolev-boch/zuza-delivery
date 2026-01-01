@@ -1470,13 +1470,15 @@
                 הסר
               </button>
             </div>
-            <input 
-              type="text" 
-              class="custom-name-input" 
+            <input
+              type="text"
+              class="custom-name-input"
               name="custom_product_name_${counter}"
               placeholder="שם המוצר"
+              onblur="validateCustomProductName(this, ${counter})"
               required
             />
+            <div id="validation_message_${counter}" class="validation-message" style="display: none;"></div>
             <div class="product-controls">
               ${createCustomSelect(productKey)}
               <div class="quick-buttons">
@@ -1486,8 +1488,8 @@
                 ).join('')}
               </div>
             </div>
-            <textarea 
-              class="notes-field" 
+            <textarea
+              class="notes-field"
               name="custom_product_notes_${counter}"
               placeholder="הערות (אופציונלי)"
               rows="2"
@@ -1512,6 +1514,64 @@
             input.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 100);
+      }
+
+      function validateCustomProductName(inputElement, counter) {
+        const productName = inputElement.value.trim();
+        const messageDiv = document.getElementById(`validation_message_${counter}`);
+
+        if (!productName) {
+          messageDiv.style.display = 'none';
+          inputElement.style.borderColor = '';
+          return;
+        }
+
+        // Special handling: מאפה פרח is the same as קראפין
+        const normalizedName = productName.toLowerCase().replace(/\s+/g, ' ');
+        if (normalizedName === 'מאפה פרח') {
+          messageDiv.textContent = '⚠️ מוצר "מאפה פרח" זהה למוצר "קראפין" שנמצא בקטגוריית מאפים מתוקים. נא לחפש "קראפין" ברשימת המוצרים.';
+          messageDiv.style.display = 'block';
+          messageDiv.style.color = '#d32f2f';
+          messageDiv.style.backgroundColor = '#ffebee';
+          messageDiv.style.padding = '10px';
+          messageDiv.style.borderRadius = '4px';
+          messageDiv.style.marginTop = '5px';
+          messageDiv.style.fontSize = '14px';
+          inputElement.style.borderColor = '#d32f2f';
+          inputElement.value = '';
+          return;
+        }
+
+        // Check if product exists in pre-listed categories
+        const existingProductKey = PRODUCT_KEYS[productName];
+        if (existingProductKey) {
+          // Find the category
+          let foundCategory = null;
+          for (const [catKey, catData] of Object.entries(CATEGORIES)) {
+            if (catData.products.includes(productName)) {
+              foundCategory = catData.name;
+              break;
+            }
+          }
+
+          if (foundCategory) {
+            messageDiv.textContent = `⚠️ המוצר "${productName}" כבר קיים ברשימה בקטגוריית: ${foundCategory}. נא לחפש את המוצר ברשימה.`;
+            messageDiv.style.display = 'block';
+            messageDiv.style.color = '#d32f2f';
+            messageDiv.style.backgroundColor = '#ffebee';
+            messageDiv.style.padding = '10px';
+            messageDiv.style.borderRadius = '4px';
+            messageDiv.style.marginTop = '5px';
+            messageDiv.style.fontSize = '14px';
+            inputElement.style.borderColor = '#d32f2f';
+            inputElement.value = '';
+            return;
+          }
+        }
+
+        // Product is valid
+        messageDiv.style.display = 'none';
+        inputElement.style.borderColor = '#4caf50';
       }
 
       function removeCustomProduct(counter) {
