@@ -781,25 +781,15 @@
 
     <script>
       const SCRIPT_URL =
-        'https://script.google.com/macros/s/AKfycbw_KMlXi8U09e_rzbRRUKrB0TD5Mx2u1P3IRUyztQxRnnVSaenoXXNQLZEVIqaazX9h8w/exec';
+        'https://script.google.com/macros/s/AKfycbzZKvaGV-nPrt659m3KjTL8fc-hhgq-zRaWeWd4G30jhrJpzHz5Bi0i6OF0Gsozsy2jcQ/exec';
 
       let deliveryData = null;
       let originalQuantities = {};
       let isSubmitting = false;
       let addedProducts = {}; // Tracks products added from modal: {productKey: {name, category, quantity}}
 
-      // PRODUCT KEYS - WITH HANUKKAH 2025
+      // PRODUCT KEYS
       const PRODUCT_KEYS = {
-        // Hanukkah 2025 Donuts
-        'קשיו גולד': 'hanukkah_cashew_gold',
-        "שוקולד קראנץ'": 'hanukkah_chocolate_crunch',
-        'גבינה פירורים': 'hanukkah_cheese_crumbs',
-        סוכריות: 'hanukkah_candies',
-        'וניל פטל': 'hanukkah_vanilla_raspberry',
-        פיסטוק: 'hanukkah_pistachio',
-        'מנגו פסיפלורה': 'hanukkah_mango_passionfruit',
-        'פטיסייר קינמון': 'hanukkah_patissier',
-        'סנט הונורה': 'hanukkah_saint_honore',
         // Sweet pastries
         'קרואסון חמאה': 'sweet_croissant_butter',
         'קרואסון שוקולד': 'sweet_croissant_chocolate',
@@ -816,6 +806,7 @@
         'קרואסון גבינה פירות יער': 'sweet_croissant_cheese_berry',
         'קרואסון שקדים': 'sweet_croissant_almonds',
         'קווין אמאן': 'sweet_kouign_amann',
+        קראפין: 'sweet_krapfen',
         // Salty
         'לחמניה ריקה': 'salty_empty_bun',
         'בייגל ריק': 'salty_empty_bagel',
@@ -828,6 +819,8 @@
         בייגלסון: 'salty_bagelson',
         'חלות בריוש': 'salty_brioche_challah',
         'כיכר לחם': 'salty_bread_loaf',
+        'מאפה גבינות וסביח': 'salty_cheese_saviach',
+        'מאפה גבינה ותרד': 'salty_cheese_spinach',
         // Sandwiches
         'מחמצת סלק': 'sandwiches_beet_sourdough',
         'מחמצת חצילים': 'sandwiches_eggplant_sourdough',
@@ -835,7 +828,6 @@
         'כריך בורקס גבינות': 'sandwiches_bourekas_cheeses',
         'כריך קרואסון חמאה': 'sandwiches_croissant_butter',
         'כריך בייגל': 'sandwiches_bagel',
-        'מאפה גבינות סביח': 'sandwiches_focaccia',
         // Shelf products
         'עוגת שמרים': 'shelf_yeast_cake',
         חלות: 'shelf_challah',
@@ -890,20 +882,6 @@
 
       // Categories Data
       const CATEGORIES = {
-        hanukkah2025: {
-          name: 'סופגניות חנוכה 2025',
-          products: [
-            'קשיו גולד',
-            "שוקולד קראנץ'",
-            'גבינה פירורים',
-            'סוכריות',
-            'וניל פטל',
-            'פיסטוק',
-            'מנגו פסיפלורה',
-            'פטיסייר קינמון',
-            'סנט הונורה',
-          ],
-        },
         sweet: {
           name: 'מאפים מתוקים',
           products: [
@@ -922,6 +900,7 @@
             'קרואסון גבינה פירות יער',
             'קרואסון שקדים',
             'קווין אמאן',
+            'קראפין',
           ],
         },
         salty: {
@@ -938,6 +917,8 @@
             'בייגלסון',
             'חלות בריוש',
             'כיכר לחם',
+            'מאפה גבינות וסביח',
+            'מאפה גבינה ותרד',
           ],
         },
         sandwiches: {
@@ -949,7 +930,6 @@
             'כריך בורקס גבינות',
             'כריך קרואסון חמאה',
             'כריך בייגל',
-            'מאפה גבינות סביח',
           ],
         },
         shelf: {
@@ -1413,11 +1393,38 @@
 
       function addCustomProduct() {
         const input = document.getElementById('customProductInput');
-        const productName = input.value.trim();
+        let productName = input.value.trim();
 
         if (!productName) {
           alert('נא להזין שם מוצר');
           return;
+        }
+
+        // Special handling: מאפה פרח is the same as קראפין
+        const normalizedName = productName.toLowerCase().replace(/\s+/g, ' ');
+        if (normalizedName === 'מאפה פרח') {
+          alert('מוצר "מאפה פרח" זהה למוצר "קראפין" שנמצא בקטגוריית מאפים מתוקים.\nנא לחפש "קראפין" ברשימת המוצרים.');
+          input.value = '';
+          return;
+        }
+
+        // Check if product exists in pre-listed categories
+        const existingProductKey = PRODUCT_KEYS[productName];
+        if (existingProductKey) {
+          // Find the category
+          let foundCategory = null;
+          for (const [catKey, catData] of Object.entries(CATEGORIES)) {
+            if (catData.products.includes(productName)) {
+              foundCategory = catData.name;
+              break;
+            }
+          }
+
+          if (foundCategory) {
+            alert(`המוצר "${productName}" כבר קיים ברשימה.\nתוכל למצוא אותו בקטגוריית: ${foundCategory}`);
+            input.value = '';
+            return;
+          }
         }
 
         // Generate unique custom product key

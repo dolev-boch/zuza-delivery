@@ -1,6 +1,6 @@
 // ============================================================================
 // ZUZA PATISSERIE - DELIVERY MANAGEMENT SYSTEM
-// Google Apps Script - COMPLETE VERSION WITH HANUKKAH 2025
+// Google Apps Script - COMPLETE VERSION
 // ============================================================================
 
 // CONFIGURATION
@@ -15,13 +15,9 @@ const MAX_EMAIL_RETRIES = 3;
 const EMAIL_RETRY_DELAY = 1000;
 
 // Sheet structure constants
-const HANUKKAH_START_ROW = 80;
-const HANUKKAH_END_ROW = 89;
-const CUSTOM_PRODUCTS_START_ROW = 91; // Row 90 is blank separator, 91+ for אחרים
-const FIRST_HANUKKAH_SHEET = 10;
-const LAST_HANUKKAH_SHEET = 31;
+const CUSTOM_PRODUCTS_START_ROW = 82; // Row 81 is last regular product, 82+ for אחרים
 const SUMMARY_SHEET_NAME = 'סיכום חודש';
-const SUMMARY_HANUKKAH_START_ROW = 81;
+const SUMMARY_CUSTOM_START_ROW = 82; // Custom products start at row 82 in summary
 
 // Column definitions
 const COLUMNS = {
@@ -468,25 +464,11 @@ function updateDeliveryData(sheet, data, submissionTime) {
   const regularProducts = data.products.filter(p => !p.key.startsWith('custom_'));
   const customProducts = data.products.filter(p => p.key.startsWith('custom_'));
 
-  // Check if this sheet should have Hanukkah products (sheets 10-31)
-  // Sheet names are like "01", "02", "10", "11", etc.
-  const sheetName = sheet.getName();
-  const sheetNumber = parseInt(sheetName, 10);
-  const isHanukkahSheet = !isNaN(sheetNumber) && sheetNumber >= (FIRST_HANUKKAH_SHEET + 1) && sheetNumber <= (LAST_HANUKKAH_SHEET + 1);
-
-  Logger.log(`Sheet: ${sheetName}, Number: ${sheetNumber}, Is Hanukkah: ${isHanukkahSheet}`);
-
   Logger.log('Processing ' + regularProducts.length + ' regular products');
   regularProducts.forEach(product => {
     const productInfo = PRODUCT_ROW_MAP[product.key];
 
     if (productInfo) {
-      // Skip Hanukkah products if not in Hanukkah sheets
-      if (productInfo.category === 'סופגניות חנוכה 2025' && !isHanukkahSheet) {
-        Logger.log(`Skipping Hanukkah product ${productInfo.name} - not in Hanukkah sheet range`);
-        return;
-      }
-
       const row = productInfo.row;
       const currentQuantity = parseInt(sheet.getRange(row, COLUMNS.QUANTITY).getValue()) || 0;
       const newQuantity = parseInt(product.quantity) || 0;
@@ -508,12 +490,6 @@ function updateDeliveryData(sheet, data, submissionTime) {
 
   if (customProducts.length > 0) {
     Logger.log('Processing ' + customProducts.length + ' custom products');
-
-    // Ensure row 90 is blank separator (only in Hanukkah sheets)
-    if (isHanukkahSheet) {
-      sheet.getRange(90, COLUMNS.PRODUCT_NAME, 1, 5).clearContent();
-      Logger.log('Row 90 set as blank separator');
-    }
 
     let lastRow = Math.max(sheet.getLastRow(), CUSTOM_PRODUCTS_START_ROW - 1);
 
@@ -722,10 +698,7 @@ function updateSummarySheet() {
       return;
     }
 
-    // 1. Update Hanukkah products (rows 81-90 in summary)
-    updateHanukkahProductsInSummary(summarySheet, ss);
-
-    // 2. Consolidate and update אחרים products
+    // Consolidate and update אחרים products
     updateCustomProductsInSummary(summarySheet, ss);
 
     SpreadsheetApp.flush();
@@ -735,62 +708,12 @@ function updateSummarySheet() {
   }
 }
 
-function updateHanukkahProductsInSummary(summarySheet, ss) {
-  Logger.log('Updating Hanukkah products in summary sheet...');
-
-  const hanukkahProducts = [];
-
-  // Get all Hanukkah products from PRODUCT_ROW_MAP
-  Object.entries(PRODUCT_ROW_MAP).forEach(([key, info]) => {
-    if (info.category === 'סופגניות חנוכה 2025') {
-      hanukkahProducts.push({
-        name: info.name,
-        price: info.price,
-        totalQuantity: 0,
-        row: info.row
-      });
-    }
-  });
-
-  // Sort by row to maintain order
-  hanukkahProducts.sort((a, b) => a.row - b.row);
-
-  // Collect quantities from sheets 10-31
-  const allSheets = ss.getSheets();
-  for (let i = FIRST_HANUKKAH_SHEET; i <= Math.min(LAST_HANUKKAH_SHEET, allSheets.length - 1); i++) {
-    const sheet = allSheets[i];
-
-    // Skip summary sheet
-    if (sheet.getName() === SUMMARY_SHEET_NAME) {
-      continue;
-    }
-
-    hanukkahProducts.forEach(product => {
-      const quantity = parseInt(sheet.getRange(product.row, COLUMNS.QUANTITY).getValue()) || 0;
-      product.totalQuantity += quantity;
-    });
-  }
-
-  // Write to summary sheet starting at row 81 using batch update
-  const summaryData = hanukkahProducts.map(product => [
-    product.name,
-    product.price,
-    product.totalQuantity
-  ]);
-
-  if (summaryData.length > 0) {
-    summarySheet.getRange(SUMMARY_HANUKKAH_START_ROW, 1, summaryData.length, 3).setValues(summaryData);
-  }
-
-  Logger.log(`Updated ${hanukkahProducts.length} Hanukkah products in summary`);
-}
-
 function updateCustomProductsInSummary(summarySheet, ss) {
   Logger.log('Consolidating אחרים products across all sheets...');
 
   const customProductsMap = {}; // {productName: totalQuantity}
 
-  // Scan all sheets for אחרים products starting from row 91
+  // Scan all sheets for אחרים products starting from custom products row
   const allSheets = ss.getSheets();
   allSheets.forEach((sheet, sheetIndex) => {
     // Skip summary sheet itself
@@ -820,8 +743,7 @@ function updateCustomProductsInSummary(summarySheet, ss) {
   });
 
   // Write consolidated אחרים products to summary sheet
-  // Start after Hanukkah products (row 91 in summary = 81 + 10)
-  const summaryStartRow = SUMMARY_HANUKKAH_START_ROW + 10; // Row 91
+  const summaryStartRow = SUMMARY_CUSTOM_START_ROW; // Row 82
 
   // Clear existing אחרים section first
   const summaryLastRow = summarySheet.getLastRow();
@@ -1351,21 +1273,10 @@ function buildConfirmationCompleteEmailPlain(deliveryDate, certNumber, fillerNam
 }
 
 // ============================================================================
-// PRODUCT MAPPING - WITH HANUKKAH 2025 (10 PRODUCTS, ROWS 95-104)
+// PRODUCT MAPPING
 // ============================================================================
 
 const PRODUCT_ROW_MAP = {
-  // HANUKKAH 2025 DONUTS - Rows 80-88 (9 products) - Sheets 10-31 only
-  'hanukkah_cashew_gold': { row: 80, name: 'קשיו גולד', category: 'סופגניות חנוכה 2025', price: 19 },
-  'hanukkah_chocolate_crunch': { row: 81, name: "שוקולד קראנץ'", category: 'סופגניות חנוכה 2025', price: 19 },
-  'hanukkah_cheese_crumbs': { row: 82, name: 'גבינה פירורים', category: 'סופגניות חנוכה 2025', price: 17 },
-  'hanukkah_candies': { row: 83, name: 'סוכריות', category: 'סופגניות חנוכה 2025', price: 15 },
-  'hanukkah_vanilla_raspberry': { row: 84, name: 'וניל פטל', category: 'סופגניות חנוכה 2025', price: 19 },
-  'hanukkah_pistachio': { row: 85, name: 'פיסטוק', category: 'סופגניות חנוכה 2025', price: 19 },
-  'hanukkah_mango_passionfruit': { row: 86, name: 'מנגו פסיפלורה', category: 'סופגניות חנוכה 2025', price: 17 },
-  'hanukkah_patissier': { row: 87, name: 'פטיסייר קינמון', category: 'סופגניות חנוכה 2025', price: 15 },
-  'hanukkah_saint_honore': { row: 88, name: 'סנט הונורה', category: 'סופגניות חנוכה 2025', price: 19 },
-
   // Sweet pastries - מאפים מתוקים
   'sweet_croissant_butter': { row: 2, name: 'קרואסון חמאה', category: 'מאפים מתוקים', price: 0 },
   'sweet_croissant_chocolate': { row: 3, name: 'קרואסון שוקולד', category: 'מאפים מתוקים', price: 0 },
@@ -1382,81 +1293,83 @@ const PRODUCT_ROW_MAP = {
   'sweet_croissant_cheese_berry': { row: 14, name: 'קרואסון גבינה פירות יער', category: 'מאפים מתוקים', price: 0 },
   'sweet_croissant_almonds': { row: 15, name: 'קרואסון שקדים', category: 'מאפים מתוקים', price: 0 },
   'sweet_kouign_amann': { row: 16, name: 'קווין אמאן', category: 'מאפים מתוקים', price: 0 },
+  'sweet_krapfen': { row: 17, name: 'קראפין', category: 'מאפים מתוקים', price: 30 },
 
   // Salty - מלוחים
-  'salty_empty_bun': { row: 17, name: 'לחמניה ריקה', category: 'מלוחים', price: 0 },
-  'salty_empty_bagel': { row: 18, name: 'בייגל ריק', category: 'מלוחים', price: 0 },
-  'salty_empty_poppy_bun': { row: 19, name: 'לחמנית פרג ריקה', category: 'מלוחים', price: 0 },
-  'salty_empty_cheese_bourekas': { row: 20, name: 'בורקס גבינה ריק', category: 'מלוחים', price: 0 },
-  'salty_rectangle_pastry': { row: 21, name: 'מאפה מלוח (מלבן)', category: 'מלוחים', price: 0 },
-  'salty_focaccia_squares': { row: 22, name: "ריבועי פוקאצ'ה", category: 'מלוחים', price: 0 },
-  'salty_personal_focaccia': { row: 23, name: "פוקאצ'ה אישית", category: 'מלוחים', price: 0 },
-  'salty_quiche_10': { row: 24, name: 'קיש ק.10', category: 'מלוחים', price: 0 },
-  'salty_bagelson': { row: 25, name: 'בייגלסון', category: 'מלוחים', price: 0 },
-  'salty_brioche_challah': { row: 26, name: 'חלות בריוש', category: 'מלוחים', price: 0 },
-  'salty_bread_loaf': { row: 27, name: 'כיכר לחם', category: 'מלוחים', price: 0 },
+  'salty_empty_bun': { row: 18, name: 'לחמניה ריקה', category: 'מלוחים', price: 0 },
+  'salty_empty_bagel': { row: 19, name: 'בייגל ריק', category: 'מלוחים', price: 0 },
+  'salty_empty_poppy_bun': { row: 20, name: 'לחמנית פרג ריקה', category: 'מלוחים', price: 0 },
+  'salty_empty_cheese_bourekas': { row: 21, name: 'בורקס גבינה ריק', category: 'מלוחים', price: 0 },
+  'salty_rectangle_pastry': { row: 22, name: 'מאפה מלוח (מלבן)', category: 'מלוחים', price: 0 },
+  'salty_focaccia_squares': { row: 23, name: "ריבועי פוקאצ'ה", category: 'מלוחים', price: 0 },
+  'salty_personal_focaccia': { row: 24, name: "פוקאצ'ה אישית", category: 'מלוחים', price: 0 },
+  'salty_quiche_10': { row: 25, name: 'קיש ק.10', category: 'מלוחים', price: 0 },
+  'salty_bagelson': { row: 26, name: 'בייגלסון', category: 'מלוחים', price: 0 },
+  'salty_brioche_challah': { row: 27, name: 'חלות בריוש', category: 'מלוחים', price: 0 },
+  'salty_bread_loaf': { row: 28, name: 'כיכר לחם', category: 'מלוחים', price: 0 },
+  'salty_cheese_saviach': { row: 29, name: 'מאפה גבינות וסביח', category: 'מלוחים', price: 38 },
+  'salty_cheese_spinach': { row: 30, name: 'מאפה גבינה ותרד', category: 'מלוחים', price: 32 },
 
   // Sandwiches - כריכים
-  'sandwiches_beet_sourdough': { row: 28, name: 'מחמצת סלק', category: 'כריכים', price: 0 },
-  'sandwiches_eggplant_sourdough': { row: 29, name: 'מחמצת חצילים', category: 'כריכים', price: 0 },
-  'sandwiches_brioche_poppy_camembert': { row: 30, name: 'בריוש פרג קממבר', category: 'כריכים', price: 0 },
-  'sandwiches_bourekas_cheeses': { row: 31, name: 'כריך בורקס גבינות', category: 'כריכים', price: 0 },
-  'sandwiches_croissant_butter': { row: 32, name: 'כריך קרואסון חמאה', category: 'כריכים', price: 0 },
-  'sandwiches_bagel': { row: 33, name: 'כריך בייגל', category: 'כריכים', price: 0 },
-  'sandwiches_focaccia': { row: 34, name: 'מאפה גבינות סביח', category: 'כריכים', price: 0 },
+  'sandwiches_beet_sourdough': { row: 31, name: 'מחמצת סלק', category: 'כריכים', price: 0 },
+  'sandwiches_eggplant_sourdough': { row: 32, name: 'מחמצת חצילים', category: 'כריכים', price: 0 },
+  'sandwiches_brioche_poppy_camembert': { row: 33, name: 'בריוש פרג קממבר', category: 'כריכים', price: 0 },
+  'sandwiches_bourekas_cheeses': { row: 34, name: 'כריך בורקס גבינות', category: 'כריכים', price: 0 },
+  'sandwiches_croissant_butter': { row: 35, name: 'כריך קרואסון חמאה', category: 'כריכים', price: 0 },
+  'sandwiches_bagel': { row: 36, name: 'כריך בייגל', category: 'כריכים', price: 0 },
 
   // Shelf products - מוצרי מדף
-  'shelf_yeast_cake': { row: 35, name: 'עוגת שמרים', category: 'מוצרי מדף', price: 0 },
-  'shelf_challah': { row: 36, name: 'חלות', category: 'מוצרי מדף', price: 0 },
-  'shelf_thick': { row: 37, name: 'בחושות', category: 'מוצרי מדף', price: 0 },
+  'shelf_yeast_cake': { row: 37, name: 'עוגת שמרים', category: 'מוצרי מדף', price: 0 },
+  'shelf_challah': { row: 38, name: 'חלות', category: 'מוצרי מדף', price: 0 },
+  'shelf_thick': { row: 39, name: 'בחושות', category: 'מוצרי מדף', price: 0 },
 
   // Whole cakes - עוגות שלמות
-  'whole_cakes_fudge_mascarpone_strip': { row: 38, name: "פס פאדג' מסקרפונה", category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_rusha_hazelnut_strip': { row: 39, name: 'פס רושה אגוזי לוז', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_mango_passionfruit_strip': { row: 40, name: 'פס מנגו פסיפלורה', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_coffee_pecan_strip': { row: 41, name: 'פס קפה פקאן', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_tricolor_20': { row: 42, name: 'טריקולד ק.20', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_pistachio_berry_20': { row: 43, name: 'פיסטוק פירות יער ק.20', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_cheese_crumbs_20': { row: 44, name: 'גבינה פירורים ק.20', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_baked_cheese_20': { row: 45, name: 'גבינה אפויה ק.20', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_rusha_hazelnut_square': { row: 46, name: 'ריבוע רושה אגוזי לוז', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_coffee_pecan_square': { row: 47, name: 'ריבוע קפה פקאן', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_chocolate_fudge': { row: 48, name: "פאדג' שוקולד", category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_fudge_mascarpone_strip': { row: 40, name: "פס פאדג' מסקרפונה", category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_rusha_hazelnut_strip': { row: 41, name: 'פס רושה אגוזי לוז', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_mango_passionfruit_strip': { row: 42, name: 'פס מנגו פסיפלורה', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_coffee_pecan_strip': { row: 43, name: 'פס קפה פקאן', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_tricolor_20': { row: 44, name: 'טריקולד ק.20', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_pistachio_berry_20': { row: 45, name: 'פיסטוק פירות יער ק.20', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_cheese_crumbs_20': { row: 46, name: 'גבינה פירורים ק.20', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_baked_cheese_20': { row: 47, name: 'גבינה אפויה ק.20', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_rusha_hazelnut_square': { row: 48, name: 'ריבוע רושה אגוזי לוז', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_coffee_pecan_square': { row: 49, name: 'ריבוע קפה פקאן', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_chocolate_fudge': { row: 50, name: "פאדג' שוקולד", category: 'עוגות שלמות', price: 0 },
 
   // Vitrina desserts - קינוחי ויטרינה
-  'vitrina_cashew_dolce': { row: 49, name: "קשיו דולצ'ה", category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_pistachio_berry': { row: 50, name: 'פיסטוק פירות יער', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_pheasant_vanilla_raspberry': { row: 51, name: 'פחזנית וניל פטל', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_sabla_pecan': { row: 52, name: 'סבלה פקאן', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_fruit_tart': { row: 53, name: 'טארט פירות', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_lemon_tart_100': { row: 54, name: 'טארט לימון 100%', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_chocolate_100': { row: 55, name: '100 אחוז שוקולד', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_rusha_hazelnut': { row: 56, name: 'רושה אגוזי לוז', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_paris_brest': { row: 57, name: 'פריז ברסט', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_chocolate_ball': { row: 58, name: 'כדור שוקולד', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_personal_pheasant_vanilla': { row: 59, name: 'פחזנית וניל אישית', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_cashew_dolce': { row: 51, name: "קשיו דולצ'ה", category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_pistachio_berry': { row: 52, name: 'פיסטוק פירות יער', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_pheasant_vanilla_raspberry': { row: 53, name: 'פחזנית וניל פטל', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_sabla_pecan': { row: 54, name: 'סבלה פקאן', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_fruit_tart': { row: 55, name: 'טארט פירות', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_lemon_tart_100': { row: 56, name: 'טארט לימון 100%', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_chocolate_100': { row: 57, name: '100 אחוז שוקולד', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_rusha_hazelnut': { row: 58, name: 'רושה אגוזי לוז', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_paris_brest': { row: 59, name: 'פריז ברסט', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_chocolate_ball': { row: 60, name: 'כדור שוקולד', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_personal_pheasant_vanilla': { row: 61, name: 'פחזנית וניל אישית', category: 'קינוחי ויטרינה', price: 0 },
 
   // Cookies - עוגיות
-  'cookies_florentine': { row: 60, name: 'פלורנטין', category: 'עוגיות', price: 0 },
-  'cookies_coffee_almonds': { row: 61, name: 'קפה שקדים', category: 'עוגיות', price: 0 },
-  'cookies_almonds_lemon': { row: 62, name: 'שקדים לימון', category: 'עוגיות', price: 0 },
-  'cookies_pecan': { row: 63, name: 'פקאן', category: 'עוגיות', price: 0 },
-  'cookies_brownies': { row: 64, name: 'בראוניז', category: 'עוגיות', price: 0 },
-  'cookies_butter_hazelnut': { row: 65, name: 'חמאה לוז', category: 'עוגיות', price: 0 },
-  'cookies_parmesan': { row: 66, name: 'פרמזן', category: 'עוגיות', price: 0 },
-  'cookies_dates': { row: 67, name: 'עוגיות תמרים', category: 'עוגיות', price: 0 },
-  'cookies_alfajores': { row: 68, name: 'אלפחורס', category: 'עוגיות', price: 0 },
-  'cookies_pistachio_lag_baomer': { row: 69, name: 'פיסטוק לל"ג', category: 'עוגיות', price: 0 },
-  'cookies_cocoa_chocolate': { row: 70, name: 'קקאו שוקולד', category: 'עוגיות', price: 0 },
+  'cookies_florentine': { row: 62, name: 'פלורנטין', category: 'עוגיות', price: 0 },
+  'cookies_coffee_almonds': { row: 63, name: 'קפה שקדים', category: 'עוגיות', price: 0 },
+  'cookies_almonds_lemon': { row: 64, name: 'שקדים לימון', category: 'עוגיות', price: 0 },
+  'cookies_pecan': { row: 65, name: 'פקאן', category: 'עוגיות', price: 0 },
+  'cookies_brownies': { row: 66, name: 'בראוניז', category: 'עוגיות', price: 0 },
+  'cookies_butter_hazelnut': { row: 67, name: 'חמאה לוז', category: 'עוגיות', price: 0 },
+  'cookies_parmesan': { row: 68, name: 'פרמזן', category: 'עוגיות', price: 0 },
+  'cookies_dates': { row: 69, name: 'עוגיות תמרים', category: 'עוגיות', price: 0 },
+  'cookies_alfajores': { row: 70, name: 'אלפחורס', category: 'עוגיות', price: 0 },
+  'cookies_pistachio_lag_baomer': { row: 71, name: 'פיסטוק לל"ג', category: 'עוגיות', price: 0 },
+  'cookies_cocoa_chocolate': { row: 72, name: 'קקאו שוקולד', category: 'עוגיות', price: 0 },
 
   // Various - מוצרים שונים
-  'various_mushroom_pastry': { row: 71, name: 'מאפה פטריות', category: 'מוצרים שונים', price: 0 },
-  'various_cheese_berry_pastry': { row: 72, name: 'מאפה גבינה ופירות יער', category: 'מוצרים שונים', price: 0 },
-  'various_basque_cheesecake': { row: 73, name: 'עוגת גבינה באסקית', category: 'מוצרים שונים', price: 0 },
-  'various_yolk_pasteurized': { row: 74, name: 'חלמון מפוסטר', category: 'מוצרים שונים', price: 0 },
-  'various_parmesan_raw': { row: 75, name: 'פרמזן חומר גלם', category: 'מוצרים שונים', price: 0 },
-  'various_sweet_cream': { row: 76, name: 'שמנת מתוקה', category: 'מוצרים שונים', price: 0 },
-  'various_butter': { row: 77, name: 'חמאה', category: 'מוצרים שונים', price: 0 },
-  'various_pistachio_berry_strip': { row: 78, name: 'פס פיסטוק פירות יער', category: 'מוצרים שונים', price: 0 },
-  'various_pressburger_poppy': { row: 79, name: 'פרסבורגר פרג', category: 'מוצרים שונים', price: 0 }
+  'various_mushroom_pastry': { row: 73, name: 'מאפה פטריות', category: 'מוצרים שונים', price: 0 },
+  'various_cheese_berry_pastry': { row: 74, name: 'מאפה גבינה ופירות יער', category: 'מוצרים שונים', price: 0 },
+  'various_basque_cheesecake': { row: 75, name: 'עוגת גבינה באסקית', category: 'מוצרים שונים', price: 0 },
+  'various_yolk_pasteurized': { row: 76, name: 'חלמון מפוסטר', category: 'מוצרים שונים', price: 0 },
+  'various_parmesan_raw': { row: 77, name: 'פרמזן חומר גלם', category: 'מוצרים שונים', price: 0 },
+  'various_sweet_cream': { row: 78, name: 'שמנת מתוקה', category: 'מוצרים שונים', price: 0 },
+  'various_butter': { row: 79, name: 'חמאה', category: 'מוצרים שונים', price: 0 },
+  'various_pistachio_berry_strip': { row: 80, name: 'פס פיסטוק פירות יער', category: 'מוצרים שונים', price: 0 },
+  'various_pressburger_poppy': { row: 81, name: 'פרסבורגר פרג', category: 'מוצרים שונים', price: 0 }
 };

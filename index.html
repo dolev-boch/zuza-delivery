@@ -950,7 +950,7 @@
       // Configuration
       const CONFIG = {
         API_URL:
-          'https://script.google.com/macros/s/AKfycbw_KMlXi8U09e_rzbRRUKrB0TD5Mx2u1P3IRUyztQxRnnVSaenoXXNQLZEVIqaazX9h8w/exec',
+          'https://script.google.com/macros/s/AKfycbzZKvaGV-nPrt659m3KjTL8fc-hhgq-zRaWeWd4G30jhrJpzHz5Bi0i6OF0Gsozsy2jcQ/exec',
         MAX_QUANTITY: 50,
         QUICK_AMOUNTS: [2, 4, 5, 10],
         MAX_RETRIES: 3,
@@ -965,19 +965,8 @@
         reviewData: null,
       };
 
-      // PRODUCT KEYS - WITH HANUKKAH 2025
+      // PRODUCT KEYS
       const PRODUCT_KEYS = {
-        // Hanukkah 2025 Donuts - סופגניות חנוכה 2025
-        'קשיו גולד': 'hanukkah_cashew_gold',
-        "שוקולד קראנץ'": 'hanukkah_chocolate_crunch',
-        'גבינה פירורים': 'hanukkah_cheese_crumbs',
-        סוכריות: 'hanukkah_candies',
-        'וניל פטל': 'hanukkah_vanilla_raspberry',
-        פיסטוק: 'hanukkah_pistachio',
-        'מנגו פסיפלורה': 'hanukkah_mango_passionfruit',
-        'פטיסייר קינמון': 'hanukkah_patissier',
-        'סנט הונורה': 'hanukkah_saint_honore',
-
         // Sweet pastries - מאפים מתוקים
         'קרואסון חמאה': 'sweet_croissant_butter',
         'קרואסון שוקולד': 'sweet_croissant_chocolate',
@@ -994,6 +983,7 @@
         'קרואסון גבינה פירות יער': 'sweet_croissant_cheese_berry',
         'קרואסון שקדים': 'sweet_croissant_almonds',
         'קווין אמאן': 'sweet_kouign_amann',
+        קראפין: 'sweet_krapfen',
 
         // Salty - מלוחים
         'לחמניה ריקה': 'salty_empty_bun',
@@ -1007,6 +997,8 @@
         בייגלסון: 'salty_bagelson',
         'חלות בריוש': 'salty_brioche_challah',
         'כיכר לחם': 'salty_bread_loaf',
+        'מאפה גבינות וסביח': 'salty_cheese_saviach',
+        'מאפה גבינה ותרד': 'salty_cheese_spinach',
 
         // Sandwiches - כריכים
         'מחמצת סלק': 'sandwiches_beet_sourdough',
@@ -1015,7 +1007,6 @@
         'כריך בורקס גבינות': 'sandwiches_bourekas_cheeses',
         'כריך קרואסון חמאה': 'sandwiches_croissant_butter',
         'כריך בייגל': 'sandwiches_bagel',
-        'מאפה גבינות סביח': 'sandwiches_focaccia',
 
         // Shelf products - מוצרי מדף
         'עוגת שמרים': 'shelf_yeast_cake',
@@ -1073,23 +1064,8 @@
         'פרסבורגר פרג': 'various_pressburger_poppy',
       };
 
-      // Categories Data - WITH HANUKKAH 2025 AT THE BEGINNING
+      // Categories Data
       const CATEGORIES = {
-        hanukkah2025: {
-          name: 'סופגניות חנוכה 2025',
-          products: [
-            'קשיו גולד',
-            "שוקולד קראנץ'",
-            'גבינה פירורים',
-            'סוכריות',
-            'וניל פטל',
-            'פיסטוק',
-            'מנגו פסיפלורה',
-            'פטיסייר קינמון',
-            'סנט הונורה',
-          ],
-          isSpecial: true,
-        },
         sweet: {
           name: 'מאפים מתוקים',
           products: [
@@ -1108,6 +1084,7 @@
             'קרואסון גבינה פירות יער',
             'קרואסון שקדים',
             'קווין אמאן',
+            'קראפין',
           ],
         },
         salty: {
@@ -1124,6 +1101,8 @@
             'בייגלסון',
             'חלות בריוש',
             'כיכר לחם',
+            'מאפה גבינות וסביח',
+            'מאפה גבינה ותרד',
           ],
         },
         sandwiches: {
@@ -1135,7 +1114,6 @@
             'כריך בורקס גבינות',
             'כריך קרואסון חמאה',
             'כריך בייגל',
-            'מאפה גבינות סביח',
           ],
         },
         shelf: {
