@@ -115,6 +115,8 @@ function onOpen() {
     .addItem('📦 גיבוי ואיפוס חודשי', 'manualBackupAndReset')
     .addItem('📁 גיבוי בלבד (ללא איפוס)', 'manualBackupOnly')
     .addSeparator()
+    .addItem('♻️ שחזור מגיבוי אחרון', 'manualRestoreFromBackup')
+    .addSeparator()
     .addItem('⚙️ עדכון מבנה מוצרים בכל הגיליונות', 'updateAllSheetsStructure')
     .addItem('🗑️ מחיקת גיליונות שגויים (1-9)', 'removeIncorrectlyNamedSheets')
     .addSeparator()
@@ -271,6 +273,137 @@ function manualAddNewProducts() {
   } catch (error) {
     ui.alert('שגיאה', 'אירעה שגיאה: ' + error.toString(), ui.ButtonSet.OK);
   }
+}
+
+// ============================================================================
+// RESTORE FROM BACKUP
+// ============================================================================
+
+function manualRestoreFromBackup() {
+  const ui = SpreadsheetApp.getUi();
+
+  const response = ui.alert(
+    'שחזור נתונים מגיבוי',
+    'פעולה זו תשחזר את נתוני כל הגיליונות מהגיבוי האחרון שנוצר.\n\n' +
+    '• הכמויות ישוחזרו לפי שם מוצר\n' +
+    '• 7 המוצרים החדשים יישמרו בתצורה הנכונה (כמות 0)\n' +
+    '• זמני שליחה (עמודה E) לא יושפעו\n\n' +
+    '⚠️ פעולה זו תדרוס את המצב הנוכחי בגיליונות. האם להמשיך?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) return;
+
+  try {
+    const result = restoreFromLatestBackup();
+    ui.alert('הצלחה', `✅ השחזור הושלם!\n${result.sheetsRestored} גיליונות שוחזרו מהגיבוי:\n"${result.backupName}"`, ui.ButtonSet.OK);
+  } catch (error) {
+    ui.alert('שגיאה', 'אירעה שגיאה בשחזור:\n' + error.toString(), ui.ButtonSet.OK);
+  }
+}
+
+function restoreFromLatestBackup() {
+  const folder = DriveApp.getFolderById(BACKUP_FOLDER_ID);
+  const files = folder.getFiles();
+
+  let latestFile = null;
+  let latestDate = null;
+
+  while (files.hasNext()) {
+    const file = files.next();
+    if (file.getMimeType() !== MimeType.GOOGLE_SHEETS) continue;
+    const created = file.getDateCreated();
+    if (!latestDate || created > latestDate) {
+      latestDate = created;
+      latestFile = file;
+    }
+  }
+
+  if (!latestFile) throw new Error('לא נמצא קובץ גיבוי בתיקייה');
+
+  Logger.log('Restoring from backup: ' + latestFile.getName());
+  const result = restoreFromBackupById(latestFile.getId());
+  result.backupName = latestFile.getName();
+  return result;
+}
+
+function restoreFromBackupById(backupSpreadsheetId) {
+  const backupSS = SpreadsheetApp.openById(backupSpreadsheetId);
+  const mainSS = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+  const sortedProducts = Object.entries(PRODUCT_ROW_MAP).sort((a, b) => a[1].row - b[1].row);
+  let sheetsRestored = 0;
+
+  for (let day = 1; day <= 31; day++) {
+    const sheetName = day < 10 ? '0' + day : day.toString();
+    const mainSheet = mainSS.getSheetByName(sheetName);
+    if (!mainSheet) continue;
+
+    // Read quantities and notes from backup by product name
+    const backupQty = {};
+    const backupNotes = {};
+    const backupSheet = backupSS.getSheetByName(sheetName);
+    if (backupSheet) {
+      const lastRow = backupSheet.getLastRow();
+      if (lastRow > 1) {
+        const data = backupSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+        data.forEach(row => {
+          const name = (row[0] || '').toString().trim();
+          if (name) {
+            backupQty[name] = row[2] || 0;
+            backupNotes[name] = row[3] || '';
+          }
+        });
+      }
+    }
+
+    // Clear product rows A-D only (preserve col E: submission time at E2)
+    const clearRange = mainSheet.getRange(2, 1, 87, 4);
+    clearRange.clearContent();
+    clearRange.setBackground(null);
+    clearRange.setFontWeight('normal');
+
+    // Write all 88 products in correct category order with restored quantities
+    sortedProducts.forEach(([key, info]) => {
+      const qty = backupQty[info.name] || 0;
+      const notes = backupNotes[info.name] || '';
+      mainSheet.getRange(info.row, 1, 1, 4).setValues([[info.name, info.category, qty, notes]]);
+      if (qty > 0) {
+        mainSheet.getRange(info.row, 1, 1, 5).setBackground('#FFF2CC');
+        mainSheet.getRange(info.row, 3).setFontWeight('bold');
+      }
+    });
+
+    sheetsRestored++;
+    if (day % 5 === 0) SpreadsheetApp.flush();
+  }
+
+  // Rebuild summary sheet with correct row numbers and SUM formulas
+  // Read prices from backup summary before clearing
+  const backupSummary = backupSS.getSheetByName(SUMMARY_SHEET_NAME);
+  const mainSummary = mainSS.getSheetByName(SUMMARY_SHEET_NAME);
+  if (mainSummary) {
+    const existingPrices = {};
+    if (backupSummary) {
+      const sLastRow = backupSummary.getLastRow();
+      if (sLastRow > 1) {
+        backupSummary.getRange(2, 1, sLastRow - 1, 2).getValues().forEach(row => {
+          if (row[0]) existingPrices[row[0].toString().trim()] = row[1];
+        });
+      }
+    }
+    mainSummary.getRange(2, 1, 87, 3).clearContent();
+    sortedProducts.forEach(([key, info]) => {
+      const price = existingPrices[info.name] !== undefined ? existingPrices[info.name] : (info.price || 0);
+      mainSummary.getRange(info.row, 1).setValue(info.name);
+      mainSummary.getRange(info.row, 2).setValue(price);
+      mainSummary.getRange(info.row, 3).setFormula(buildDaySumFormula(info.row));
+    });
+  }
+
+  SpreadsheetApp.flush();
+  Logger.log('Restore complete: ' + sheetsRestored + ' sheets restored');
+  return { sheetsRestored, backupName: backupSpreadsheetId };
 }
 
 function handleGetProductsList() {
