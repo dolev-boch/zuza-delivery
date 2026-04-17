@@ -282,48 +282,62 @@ function manualAddNewProducts() {
 function manualRestoreFromBackup() {
   const ui = SpreadsheetApp.getUi();
 
+  // Find all backup files in folder and show them to user
+  const backupFiles = listBackupFiles();
+  if (backupFiles.length === 0) {
+    ui.alert('שגיאה', 'לא נמצאו קבצי גיבוי בתיקייה.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Show the most recent backup details and confirm
+  const latest = backupFiles[0]; // sorted newest first
+  const allNames = backupFiles.map((f, i) => `${i + 1}. ${f.name} (${f.dateStr})`).join('\n');
+
   const response = ui.alert(
     'שחזור נתונים מגיבוי',
-    'פעולה זו תשחזר את נתוני כל הגיליונות מהגיבוי האחרון שנוצר.\n\n' +
-    '• הכמויות ישוחזרו לפי שם מוצר\n' +
-    '• 7 המוצרים החדשים יישמרו בתצורה הנכונה (כמות 0)\n' +
-    '• זמני שליחה (עמודה E) לא יושפעו\n\n' +
-    '⚠️ פעולה זו תדרוס את המצב הנוכחי בגיליונות. האם להמשיך?',
+    `נמצאו ${backupFiles.length} קבצי גיבוי. השחזור ישתמש בגיבוי האחרון:\n\n` +
+    `📁 "${latest.name}"\n📅 ${latest.dateStr}\n\n` +
+    `כל הגיבויים:\n${allNames}\n\n` +
+    '⚠️ פעולה זו תדרוס את כל הנתונים הנוכחיים. האם להמשיך?',
     ui.ButtonSet.YES_NO
   );
 
   if (response !== ui.Button.YES) return;
 
   try {
-    const result = restoreFromLatestBackup();
-    ui.alert('הצלחה', `✅ השחזור הושלם!\n${result.sheetsRestored} גיליונות שוחזרו מהגיבוי:\n"${result.backupName}"`, ui.ButtonSet.OK);
+    const result = restoreFromBackupById(latest.id);
+    ui.alert(
+      'הצלחה',
+      `✅ השחזור הושלם בהצלחה!\n\n` +
+      `• ${result.sheetsRestored} גיליונות יום שוחזרו\n` +
+      `• גיליון הסיכום נבנה מחדש\n` +
+      `• גיבוי ששימש: "${latest.name}"`,
+      ui.ButtonSet.OK
+    );
   } catch (error) {
     ui.alert('שגיאה', 'אירעה שגיאה בשחזור:\n' + error.toString(), ui.ButtonSet.OK);
   }
 }
 
-function restoreFromLatestBackup() {
+function listBackupFiles() {
   const folder = DriveApp.getFolderById(BACKUP_FOLDER_ID);
   const files = folder.getFiles();
-
-  let latestFile = null;
-  let latestDate = null;
+  const result = [];
 
   while (files.hasNext()) {
     const file = files.next();
     if (file.getMimeType() !== MimeType.GOOGLE_SHEETS) continue;
-    const created = file.getDateCreated();
-    if (!latestDate || created > latestDate) {
-      latestDate = created;
-      latestFile = file;
-    }
+    const modified = file.getLastUpdated();
+    result.push({
+      id: file.getId(),
+      name: file.getName(),
+      date: modified,
+      dateStr: Utilities.formatDate(modified, 'Asia/Jerusalem', 'dd/MM/yyyy HH:mm')
+    });
   }
 
-  if (!latestFile) throw new Error('לא נמצא קובץ גיבוי בתיקייה');
-
-  Logger.log('Restoring from backup: ' + latestFile.getName());
-  const result = restoreFromBackupById(latestFile.getId());
-  result.backupName = latestFile.getName();
+  // Sort newest first (by last modified date)
+  result.sort((a, b) => b.date - a.date);
   return result;
 }
 
@@ -332,78 +346,132 @@ function restoreFromBackupById(backupSpreadsheetId) {
   const mainSS = SpreadsheetApp.openById(SPREADSHEET_ID);
 
   const sortedProducts = Object.entries(PRODUCT_ROW_MAP).sort((a, b) => a[1].row - b[1].row);
+  // Build a set of regular product names for custom-product detection
+  const regularProductNames = new Set(sortedProducts.map(([, info]) => info.name));
+
   let sheetsRestored = 0;
 
+  // ── Restore each day sheet ──────────────────────────────────────────────────
   for (let day = 1; day <= 31; day++) {
     const sheetName = day < 10 ? '0' + day : day.toString();
     const mainSheet = mainSS.getSheetByName(sheetName);
     if (!mainSheet) continue;
 
-    // Read quantities and notes from backup by product name
+    // Read ALL backup data for this day (by product name)
     const backupQty = {};
     const backupNotes = {};
+    const customProductRows = []; // אחרים products from backup
+
     const backupSheet = backupSS.getSheetByName(sheetName);
     if (backupSheet) {
-      const lastRow = backupSheet.getLastRow();
-      if (lastRow > 1) {
-        const data = backupSheet.getRange(2, 1, lastRow - 1, 4).getValues();
-        data.forEach(row => {
+      const bLastRow = backupSheet.getLastRow();
+      if (bLastRow > 1) {
+        const bData = backupSheet.getRange(2, 1, bLastRow - 1, 4).getValues();
+        bData.forEach(row => {
           const name = (row[0] || '').toString().trim();
-          if (name) {
-            backupQty[name] = row[2] || 0;
-            backupNotes[name] = row[3] || '';
+          if (!name) return;
+          const qty = (row[2] !== '' && row[2] !== null) ? Number(row[2]) : 0;
+          const notes = (row[3] || '').toString();
+          if (row[1] === 'אחרים') {
+            customProductRows.push([name, 'אחרים', qty, notes]);
+          } else {
+            backupQty[name] = qty;
+            backupNotes[name] = notes;
           }
         });
       }
     }
 
-    // Clear product rows A-D only (preserve col E: submission time at E2)
-    const clearRange = mainSheet.getRange(2, 1, 87, 4);
+    // Clear entire product area A–D (rows 2 to max 88 + any custom rows)
+    const mainLastRow = mainSheet.getLastRow();
+    const clearRows = Math.max(87, mainLastRow > 1 ? mainLastRow - 1 : 87);
+    const clearRange = mainSheet.getRange(2, 1, clearRows, 4);
     clearRange.clearContent();
     clearRange.setBackground(null);
     clearRange.setFontWeight('normal');
 
-    // Write all 88 products in correct category order with restored quantities
-    sortedProducts.forEach(([key, info]) => {
-      const qty = backupQty[info.name] || 0;
+    // Write all 88 regular products in new category order
+    // Build batch arrays for efficiency
+    const valuesData = sortedProducts.map(([, info]) => {
+      const qty = backupQty[info.name] !== undefined ? backupQty[info.name] : 0;
       const notes = backupNotes[info.name] || '';
-      mainSheet.getRange(info.row, 1, 1, 4).setValues([[info.name, info.category, qty, notes]]);
+      return { row: info.row, values: [info.name, info.category, qty, notes], qty };
+    });
+
+    valuesData.forEach(({ row, values, qty }) => {
+      mainSheet.getRange(row, 1, 1, 4).setValues([values]);
       if (qty > 0) {
-        mainSheet.getRange(info.row, 1, 1, 5).setBackground('#FFF2CC');
-        mainSheet.getRange(info.row, 3).setFontWeight('bold');
+        mainSheet.getRange(row, 1, 1, 5).setBackground('#FFF2CC');
+        mainSheet.getRange(row, 3).setFontWeight('bold');
       }
     });
+
+    // Re-write custom אחרים products at new row 89+
+    if (customProductRows.length > 0) {
+      mainSheet.getRange(CUSTOM_PRODUCTS_START_ROW, 1, customProductRows.length, 4)
+        .setValues(customProductRows);
+    }
 
     sheetsRestored++;
     if (day % 5 === 0) SpreadsheetApp.flush();
   }
 
-  // Rebuild summary sheet with correct row numbers and SUM formulas
-  // Read prices from backup summary before clearing
-  const backupSummary = backupSS.getSheetByName(SUMMARY_SHEET_NAME);
-  const mainSummary = mainSS.getSheetByName(SUMMARY_SHEET_NAME);
-  if (mainSummary) {
-    const existingPrices = {};
-    if (backupSummary) {
-      const sLastRow = backupSummary.getLastRow();
-      if (sLastRow > 1) {
-        backupSummary.getRange(2, 1, sLastRow - 1, 2).getValues().forEach(row => {
-          if (row[0]) existingPrices[row[0].toString().trim()] = row[1];
-        });
-      }
-    }
-    mainSummary.getRange(2, 1, 87, 3).clearContent();
-    sortedProducts.forEach(([key, info]) => {
-      const price = existingPrices[info.name] !== undefined ? existingPrices[info.name] : (info.price || 0);
-      mainSummary.getRange(info.row, 1).setValue(info.name);
-      mainSummary.getRange(info.row, 2).setValue(price);
-      mainSummary.getRange(info.row, 3).setFormula(buildDaySumFormula(info.row));
-    });
-  }
+  // ── Rebuild summary sheet completely ────────────────────────────────────────
+  rebuildSummaryFromBackup(backupSS, mainSS, sortedProducts);
 
   SpreadsheetApp.flush();
-  Logger.log('Restore complete: ' + sheetsRestored + ' sheets restored');
-  return { sheetsRestored, backupName: backupSpreadsheetId };
+  Logger.log('Restore complete: ' + sheetsRestored + ' day sheets restored');
+  return { sheetsRestored };
+}
+
+function rebuildSummaryFromBackup(backupSS, mainSS, sortedProducts) {
+  const mainSummary = mainSS.getSheetByName(SUMMARY_SHEET_NAME);
+  if (!mainSummary) return;
+
+  // Read prices from backup summary (by product name → price)
+  const backupPrices = {};
+  const backupSummary = backupSS.getSheetByName(SUMMARY_SHEET_NAME);
+  if (backupSummary) {
+    const bLastRow = backupSummary.getLastRow();
+    if (bLastRow > 1) {
+      // Read cols A–B (name, price)
+      backupSummary.getRange(2, 1, bLastRow - 1, 2).getValues().forEach(row => {
+        const name = (row[0] || '').toString().trim();
+        if (name && row[1] !== '' && row[1] !== null) {
+          backupPrices[name] = Number(row[1]);
+        }
+      });
+    }
+  }
+
+  // Determine how many columns the current summary has so we clear everything
+  const mainLastCol = Math.max(mainSummary.getLastColumn(), 4);
+
+  // Clear ALL columns for product rows 2–88 (removes stale formulas/values in any column)
+  mainSummary.getRange(2, 1, 87, mainLastCol).clearContent();
+
+  // Build batch data arrays
+  const namePrice = [];   // cols A–B: name, price
+  const qtyFormulas = []; // col C: SUM formula for total quantity
+  const revFormulas = []; // col D: revenue = price × total qty
+
+  sortedProducts.forEach(([key, info]) => {
+    const price = backupPrices[info.name] !== undefined ? backupPrices[info.name] : (info.price || 0);
+    namePrice.push([info.name, price]);
+    qtyFormulas.push([buildDaySumFormula(info.row)]);
+    revFormulas.push([`=IFERROR(B${info.row}*C${info.row},0)`]);
+  });
+
+  // Write all rows at once using the sorted row range (rows 2–88 correspond to sortedProducts)
+  // sortedProducts is already sorted by row, so indices 0–87 → rows 2–89... no, rows are 2–88
+  // We write each product to its specific row (not contiguous index)
+  sortedProducts.forEach(([key, info], i) => {
+    mainSummary.getRange(info.row, 1, 1, 2).setValues([namePrice[i]]);
+    mainSummary.getRange(info.row, 3).setFormula(qtyFormulas[i][0]);
+    mainSummary.getRange(info.row, 4).setFormula(revFormulas[i][0]);
+  });
+
+  Logger.log('Summary rebuilt: ' + sortedProducts.length + ' products, prices from backup, new SUM formulas');
 }
 
 function handleGetProductsList() {
