@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="he" dir="rtl">
   <head>
     <meta charset="UTF-8" />
@@ -333,6 +333,31 @@
         text-align: center;
         color: var(--text-light);
         font-size: 14px;
+      }
+
+      /* Override quantity input (for amounts > 50) */
+      .override-qty-input {
+        width: 76px;
+        padding: 10px 6px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        text-align: center;
+        flex-shrink: 0;
+        background: var(--white);
+        transition: border-color 0.2s;
+      }
+
+      .override-qty-input:focus {
+        outline: none;
+        border-color: var(--gold);
+      }
+
+      .override-qty-input::placeholder {
+        font-size: 11px;
+        color: #aaa;
+        font-weight: 400;
       }
 
       /* Quick Buttons */
@@ -950,7 +975,7 @@
       // Configuration
       const CONFIG = {
         API_URL:
-          'https://script.google.com/macros/s/AKfycbzZKvaGV-nPrt659m3KjTL8fc-hhgq-zRaWeWd4G30jhrJpzHz5Bi0i6OF0Gsozsy2jcQ/exec',
+          'https://script.google.com/macros/s/AKfycbxq7soneMCDqZ0-Y5n9abHYffK4NUWycNvSOkdn-u3cYx2twWKWRZOtqpydi7zGUIUECw/exec',
         MAX_QUANTITY: 50,
         QUICK_AMOUNTS: [2, 4, 5, 10],
         MAX_RETRIES: 3,
@@ -1062,6 +1087,15 @@
         חמאה: 'various_butter',
         'פס פיסטוק פירות יער': 'various_pistachio_berry_strip',
         'פרסבורגר פרג': 'various_pressburger_poppy',
+
+        // New products added April 2026
+        'בריוש סוכרה': 'sweet_brioche_sugar',
+        'לחמניית פרג': 'salty_poppy_bun',
+        פרעצל: 'salty_pretzel',
+        "כריך פוקאצ'ה": 'sandwiches_focaccia',
+        'לחמניה מקושקשת': 'sandwiches_scrambled_bun',
+        'מאפה בראוניז לוז': 'sweet_brownies_hazelnut',
+        // Note: "פאדג' שוקולד" for קינוחי ויטרינה is handled via explicit key in CATEGORIES
       };
 
       // Categories Data
@@ -1085,6 +1119,8 @@
             'קרואסון שקדים',
             'קווין אמאן',
             'קראפין',
+            'בריוש סוכרה',
+            'מאפה בראוניז לוז',
           ],
         },
         salty: {
@@ -1103,6 +1139,8 @@
             'כיכר לחם',
             'מאפה גבינות וסביח',
             'מאפה גבינה ותרד',
+            'לחמניית פרג',
+            'פרעצל',
           ],
         },
         sandwiches: {
@@ -1114,6 +1152,8 @@
             'כריך בורקס גבינות',
             'כריך קרואסון חמאה',
             'כריך בייגל',
+            "כריך פוקאצ'ה",
+            'לחמניה מקושקשת',
           ],
         },
         shelf: {
@@ -1150,6 +1190,7 @@
             'פריז ברסט',
             'כדור שוקולד',
             'פחזנית וניל אישית',
+            { name: "פאדג' שוקולד", key: 'vitrina_chocolate_fudge' },
           ],
         },
         cookies: {
@@ -1202,7 +1243,7 @@
       // Custom Select Functions
       function createCustomSelect(productKey) {
         const selectId = `select_${productKey}`;
-        const options = Array.from({ length: CONFIG.MAX_QUANTITY + 1 }, (_, i) => i);
+        const options = Array.from({ length: CONFIG.MAX_QUANTITY + 1 }, (_, i) => i); // 0–50
 
         return `
           <div class="custom-select-wrapper" data-select-id="${selectId}">
@@ -1212,8 +1253,8 @@
             </div>
             <div class="custom-select-dropdown" id="${selectId}_dropdown">
               <div class="select-search">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="חיפוש..."
                   oninput="filterOptions('${selectId}', this.value)"
                   onclick="event.stopPropagation()"
@@ -1230,7 +1271,33 @@
             </div>
             <input type="hidden" name="${productKey}_quantity" id="${selectId}_input" value="0" />
           </div>
+          <input
+            type="number"
+            class="override-qty-input"
+            id="${selectId}_override"
+            placeholder=">50"
+            min="51"
+            step="1"
+            oninput="handleOverrideQty('${selectId}', this.value)"
+            title="הזן כמות מעל 50"
+          />
         `;
+      }
+
+      function handleOverrideQty(selectId, value) {
+        const numVal = parseInt(value, 10);
+        const input = document.getElementById(`${selectId}_input`);
+        const displayVal = document.getElementById(`${selectId}_value`);
+
+        if (value !== '' && !isNaN(numVal) && numVal > 0) {
+          input.value = numVal;
+          displayVal.textContent = numVal;
+          if (State.openSelectId === selectId) closeSelect(selectId);
+        } else if (value === '') {
+          // Revert hidden input to 0 when override is cleared
+          input.value = 0;
+          displayVal.textContent = 0;
+        }
       }
 
       function toggleSelect(selectId) {
@@ -1284,6 +1351,8 @@
       function selectValue(selectId, value) {
         document.getElementById(`${selectId}_value`).textContent = value;
         document.getElementById(`${selectId}_input`).value = value;
+        const override = document.getElementById(`${selectId}_override`);
+        if (override) override.value = '';
         closeSelect(selectId);
       }
 
@@ -1375,16 +1444,23 @@
 
       // Render Functions
       function renderProduct(product, categoryKey) {
-        const productKey = PRODUCT_KEYS[product];
+        let productName, productKey;
+        if (typeof product === 'object' && product.key) {
+          productName = product.name;
+          productKey = product.key;
+        } else {
+          productName = product;
+          productKey = PRODUCT_KEYS[product];
+        }
 
         if (!productKey) {
-          console.warn(`No product key mapping found for: ${product}`);
+          console.warn(`No product key mapping found for: ${productName}`);
           return '';
         }
 
         return `
           <div class="product-item">
-            <div class="product-name">${product}</div>
+            <div class="product-name">${productName}</div>
             <div class="product-controls">
               ${createCustomSelect(productKey)}
               <div class="quick-buttons">
@@ -1529,7 +1605,8 @@
         // Special handling: מאפה פרח is the same as קראפין
         const normalizedName = productName.toLowerCase().replace(/\s+/g, ' ');
         if (normalizedName === 'מאפה פרח') {
-          messageDiv.textContent = '⚠️ מוצר "מאפה פרח" זהה למוצר "קראפין" שנמצא בקטגוריית מאפים מתוקים. נא לחפש "קראפין" ברשימת המוצרים.';
+          messageDiv.textContent =
+            '⚠️ מוצר "מאפה פרח" זהה למוצר "קראפין" שנמצא בקטגוריית מאפים מתוקים. נא לחפש "קראפין" ברשימת המוצרים.';
           messageDiv.style.display = 'block';
           messageDiv.style.color = '#d32f2f';
           messageDiv.style.backgroundColor = '#ffebee';
@@ -1727,6 +1804,9 @@
             el.value = '0';
           }
         });
+        document.querySelectorAll('.override-qty-input').forEach((el) => {
+          el.value = '';
+        });
 
         document.getElementById('customProductsList').innerHTML = '';
         State.customProductCounter = 0;
@@ -1754,8 +1834,15 @@
         };
 
         Object.entries(CATEGORIES).forEach(([categoryKey, categoryData]) => {
-          categoryData.products.forEach((productName) => {
-            const productKey = PRODUCT_KEYS[productName];
+          categoryData.products.forEach((productEntry) => {
+            let productName, productKey;
+            if (typeof productEntry === 'object' && productEntry.key) {
+              productName = productEntry.name;
+              productKey = productEntry.key;
+            } else {
+              productName = productEntry;
+              productKey = PRODUCT_KEYS[productEntry];
+            }
 
             if (!productKey) {
               console.warn(`No mapping for product: ${productName}`);
@@ -1765,7 +1852,6 @@
             const quantity = formData.get(`${productKey}_quantity`) || '0';
             const notes = formData.get(`${productKey}_notes`) || '';
 
-            // Only add products with quantity > 0
             if (parseInt(quantity) > 0) {
               data.products.push({
                 key: productKey,

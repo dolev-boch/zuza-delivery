@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html dir="rtl" lang="he">
   <head>
     <meta charset="UTF-8" />
@@ -755,7 +755,7 @@
                 type="text"
                 id="customProductInput"
                 placeholder="שם המוצר..."
-                onkeypress="if(event.key==='Enter') addCustomProduct()"
+                onkeypress="if (event.key === 'Enter') addCustomProduct();"
               />
               <button class="custom-product-add-btn" onclick="addCustomProduct()">הוסף +</button>
             </div>
@@ -781,7 +781,7 @@
 
     <script>
       const SCRIPT_URL =
-        'https://script.google.com/macros/s/AKfycbzZKvaGV-nPrt659m3KjTL8fc-hhgq-zRaWeWd4G30jhrJpzHz5Bi0i6OF0Gsozsy2jcQ/exec';
+        'https://script.google.com/macros/s/AKfycbxq7soneMCDqZ0-Y5n9abHYffK4NUWycNvSOkdn-u3cYx2twWKWRZOtqpydi7zGUIUECw/exec';
 
       let deliveryData = null;
       let originalQuantities = {};
@@ -878,6 +878,15 @@
         חמאה: 'various_butter',
         'פס פיסטוק פירות יער': 'various_pistachio_berry_strip',
         'פרסבורגר פרג': 'various_pressburger_poppy',
+
+        // New products added April 2026
+        'בריוש סוכרה': 'sweet_brioche_sugar',
+        'לחמניית פרג': 'salty_poppy_bun',
+        פרעצל: 'salty_pretzel',
+        "כריך פוקאצ'ה": 'sandwiches_focaccia',
+        'לחמניה מקושקשת': 'sandwiches_scrambled_bun',
+        'מאפה בראוניז לוז': 'sweet_brownies_hazelnut',
+        // "פאדג' שוקולד" in vitrina is handled via explicit key in CATEGORIES
       };
 
       // Categories Data
@@ -901,6 +910,8 @@
             'קרואסון שקדים',
             'קווין אמאן',
             'קראפין',
+            'בריוש סוכרה',
+            'מאפה בראוניז לוז',
           ],
         },
         salty: {
@@ -919,6 +930,8 @@
             'כיכר לחם',
             'מאפה גבינות וסביח',
             'מאפה גבינה ותרד',
+            'לחמניית פרג',
+            'פרעצל',
           ],
         },
         sandwiches: {
@@ -930,6 +943,8 @@
             'כריך בורקס גבינות',
             'כריך קרואסון חמאה',
             'כריך בייגל',
+            "כריך פוקאצ'ה",
+            'לחמניה מקושקשת',
           ],
         },
         shelf: {
@@ -966,6 +981,7 @@
             'פריז ברסט',
             'כדור שוקולד',
             'פחזנית וניל אישית',
+            { name: "פאדג' שוקולד", key: 'vitrina_chocolate_fudge' },
           ],
         },
         cookies: {
@@ -1320,8 +1336,15 @@
           productsDiv.className = 'modal-category-products';
           productsDiv.id = `modal-cat-${categoryKey}`;
 
-          categoryData.products.forEach((productName) => {
-            const productKey = PRODUCT_KEYS[productName];
+          categoryData.products.forEach((productEntry) => {
+            let productName, productKey;
+            if (typeof productEntry === 'object' && productEntry.key) {
+              productName = productEntry.name;
+              productKey = productEntry.key;
+            } else {
+              productName = productEntry;
+              productKey = PRODUCT_KEYS[productEntry];
+            }
             if (!productKey) return;
 
             // Check if already in delivery or added
@@ -1339,11 +1362,11 @@
                   alreadyInDelivery
                     ? '<span style="color: #666; font-size: 13px;">כבר במשלוח</span>'
                     : alreadyAdded
-                    ? '<span style="color: #4caf50; font-size: 13px;">נוסף ✓</span>'
-                    : `<button class="modal-add-btn" onclick="addProductToList('${productKey}', '${productName.replace(
-                        /'/g,
-                        "\\'"
-                      )}', '${categoryData.name}')">הוסף +</button>`
+                      ? '<span style="color: #4caf50; font-size: 13px;">נוסף ✓</span>'
+                      : `<button class="modal-add-btn" onclick="addProductToList('${productKey}', '${productName.replace(
+                          /'/g,
+                          "\\'"
+                        )}', '${categoryData.name}')">הוסף +</button>`
                 }
               </div>
             `;
@@ -1403,7 +1426,9 @@
         // Special handling: מאפה פרח is the same as קראפין
         const normalizedName = productName.toLowerCase().replace(/\s+/g, ' ');
         if (normalizedName === 'מאפה פרח') {
-          alert('מוצר "מאפה פרח" זהה למוצר "קראפין" שנמצא בקטגוריית מאפים מתוקים.\nנא לחפש "קראפין" ברשימת המוצרים.');
+          alert(
+            'מוצר "מאפה פרח" זהה למוצר "קראפין" שנמצא בקטגוריית מאפים מתוקים.\nנא לחפש "קראפין" ברשימת המוצרים.'
+          );
           input.value = '';
           return;
         }
@@ -1421,7 +1446,9 @@
           }
 
           if (foundCategory) {
-            alert(`המוצר "${productName}" כבר קיים ברשימה.\nתוכל למצוא אותו בקטגוריית: ${foundCategory}`);
+            alert(
+              `המוצר "${productName}" כבר קיים ברשימה.\nתוכל למצוא אותו בקטגוריית: ${foundCategory}`
+            );
             input.value = '';
             return;
           }

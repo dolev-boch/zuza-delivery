@@ -15,9 +15,9 @@ const MAX_EMAIL_RETRIES = 3;
 const EMAIL_RETRY_DELAY = 1000;
 
 // Sheet structure constants
-const CUSTOM_PRODUCTS_START_ROW = 82; // Row 81 is last regular product, 82+ for אחרים
+const CUSTOM_PRODUCTS_START_ROW = 89; // Row 88 is last regular product, 89+ for אחרים
 const SUMMARY_SHEET_NAME = 'סיכום חודש';
-const SUMMARY_CUSTOM_START_ROW = 82; // Custom products start at row 82 in summary
+const SUMMARY_CUSTOM_START_ROW = 89; // Custom products start at row 89 in summary
 
 // Column definitions
 const COLUMNS = {
@@ -102,8 +102,23 @@ function doGet(e) {
 
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
+
   ui.createMenu('סיכום חודש')
     .addItem('עדכון סיכום חודש', 'manualUpdateSummarySheet')
+    .addToUi();
+
+  ui.createMenu('מוצרים חדשים')
+    .addItem('הוסף מוצרים חדשים לכל הגיליונות (01–31)', 'manualAddNewProducts')
+    .addToUi();
+
+  ui.createMenu('🗂️ גיבוי ואיפוס')
+    .addItem('📦 גיבוי ואיפוס חודשי', 'manualBackupAndReset')
+    .addItem('📁 גיבוי בלבד (ללא איפוס)', 'manualBackupOnly')
+    .addSeparator()
+    .addItem('⚙️ עדכון מבנה מוצרים בכל הגיליונות', 'updateAllSheetsStructure')
+    .addItem('🗑️ מחיקת גיליונות שגויים (1-9)', 'removeIncorrectlyNamedSheets')
+    .addSeparator()
+    .addItem('ℹ️ בדיקת מצב מערכת', 'checkCurrentMode')
     .addToUi();
 }
 
@@ -122,6 +137,106 @@ function manualUpdateSummarySheet() {
     } catch (error) {
       ui.alert('שגיאה', 'אירעה שגיאה בעדכון הגיליון:\n' + error.toString(), ui.ButtonSet.OK);
     }
+  }
+}
+
+// ============================================================================
+// ADD NEW PRODUCTS TO ALL SHEETS
+// ============================================================================
+
+const NEW_PRODUCTS = [
+  { row: 82, name: 'בריוש סוכרה', category: 'מאפים מתוקים' },
+  { row: 83, name: 'לחמניית פרג', category: 'מלוחים' },
+  { row: 84, name: 'פרעצל', category: 'מלוחים' },
+  { row: 85, name: "כריך פוקאצ'ה", category: 'כריכים' },
+  { row: 86, name: 'לחמניה מקושקשת', category: 'כריכים' },
+  { row: 87, name: "פאדג' שוקולד", category: 'קינוחי ויטרינה' },
+  { row: 88, name: 'מאפה בראוניז לוז', category: 'מאפים מתוקים' },
+];
+
+function buildDaySumFormula(row) {
+  const parts = [];
+  for (let d = 1; d <= 31; d++) {
+    const sheetName = d < 10 ? '0' + d : d.toString();
+    parts.push(`'${sheetName}'!C${row}`);
+  }
+  return `=IFERROR(SUM(${parts.join(',')}),0)`;
+}
+
+function addNewProductsToAllSheets() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheetsUpdated = 0;
+  const warnings = [];
+
+  for (let day = 1; day <= 31; day++) {
+    const sheetName = day < 10 ? '0' + day : day.toString();
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) continue;
+
+    NEW_PRODUCTS.forEach(product => {
+      const existingName = sheet.getRange(product.row, COLUMNS.PRODUCT_NAME).getValue();
+      if (!existingName || existingName === '') {
+        sheet.getRange(product.row, COLUMNS.PRODUCT_NAME).setValue(product.name);
+        sheet.getRange(product.row, COLUMNS.CATEGORY).setValue(product.category);
+        sheet.getRange(product.row, COLUMNS.QUANTITY).setValue(0);
+      } else if (existingName === product.name) {
+        Logger.log(`Sheet ${sheetName} row ${product.row}: already has "${product.name}" – skipped`);
+      } else {
+        warnings.push(`גיליון ${sheetName} שורה ${product.row}: קיים תוכן "${existingName}" – לא הוחלף`);
+        Logger.log(`Warning: Sheet ${sheetName} row ${product.row} has "${existingName}" – not overwriting`);
+      }
+    });
+
+    sheetsUpdated++;
+    if (day % 5 === 0) SpreadsheetApp.flush();
+  }
+
+  // Update summary sheet
+  const summarySheet = ss.getSheetByName(SUMMARY_SHEET_NAME);
+  if (summarySheet) {
+    NEW_PRODUCTS.forEach(product => {
+      const existingName = summarySheet.getRange(product.row, 1).getValue();
+      if (!existingName || existingName === '') {
+        summarySheet.getRange(product.row, 1).setValue(product.name);
+        summarySheet.getRange(product.row, 2).setValue(0); // price = 0.00
+        summarySheet.getRange(product.row, 3).setFormula(buildDaySumFormula(product.row));
+      } else if (existingName !== product.name) {
+        warnings.push(`סיכום חודש שורה ${product.row}: קיים תוכן "${existingName}" – לא הוחלף`);
+      }
+    });
+    Logger.log('Summary sheet updated with new product formulas');
+  }
+
+  SpreadsheetApp.flush();
+  Logger.log(`addNewProductsToAllSheets complete: ${sheetsUpdated} sheets, ${warnings.length} warnings`);
+  return { sheetsUpdated, warnings };
+}
+
+function manualAddNewProducts() {
+  const ui = SpreadsheetApp.getUi();
+  const productList = NEW_PRODUCTS.map(p => `• ${p.name} (${p.category})`).join('\n');
+
+  const response = ui.alert(
+    'הוספת מוצרים חדשים לכל הגיליונות',
+    `פעולה זו תוסיף 7 מוצרים חדשים לכל גיליונות 01–31 ולגיליון הסיכום:\n\n${productList}\n\n` +
+    '⚠️ נתונים קיימים (כמויות ימים 01–17) לא יושפעו.\n' +
+    '⚠️ שורות ריקות בלבד יאוכלסו.\n\n' +
+    'האם להמשיך?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) return;
+
+  try {
+    const result = addNewProductsToAllSheets();
+    let msg = `✅ הפעולה הושלמה!\n${result.sheetsUpdated} גיליונות עודכנו.`;
+    if (result.warnings.length > 0) {
+      msg += `\n\n⚠️ אזהרות (${result.warnings.length}):\n${result.warnings.slice(0, 10).join('\n')}`;
+      if (result.warnings.length > 10) msg += `\n...ועוד ${result.warnings.length - 10}`;
+    }
+    ui.alert('הצלחה', msg, ui.ButtonSet.OK);
+  } catch (error) {
+    ui.alert('שגיאה', 'אירעה שגיאה: ' + error.toString(), ui.ButtonSet.OK);
   }
 }
 
@@ -743,7 +858,7 @@ function updateCustomProductsInSummary(summarySheet, ss) {
   });
 
   // Write consolidated אחרים products to summary sheet
-  const summaryStartRow = SUMMARY_CUSTOM_START_ROW; // Row 82
+  const summaryStartRow = SUMMARY_CUSTOM_START_ROW; // Row 89
 
   // Clear existing אחרים section first
   const summaryLastRow = summarySheet.getLastRow();
@@ -1371,5 +1486,14 @@ const PRODUCT_ROW_MAP = {
   'various_sweet_cream': { row: 78, name: 'שמנת מתוקה', category: 'מוצרים שונים', price: 0 },
   'various_butter': { row: 79, name: 'חמאה', category: 'מוצרים שונים', price: 0 },
   'various_pistachio_berry_strip': { row: 80, name: 'פס פיסטוק פירות יער', category: 'מוצרים שונים', price: 0 },
-  'various_pressburger_poppy': { row: 81, name: 'פרסבורגר פרג', category: 'מוצרים שונים', price: 0 }
+  'various_pressburger_poppy': { row: 81, name: 'פרסבורגר פרג', category: 'מוצרים שונים', price: 0 },
+
+  // New products added April 2026 - rows 82-88
+  'sweet_brioche_sugar': { row: 82, name: 'בריוש סוכרה', category: 'מאפים מתוקים', price: 0 },
+  'salty_poppy_bun': { row: 83, name: 'לחמניית פרג', category: 'מלוחים', price: 0 },
+  'salty_pretzel': { row: 84, name: 'פרעצל', category: 'מלוחים', price: 0 },
+  'sandwiches_focaccia': { row: 85, name: "כריך פוקאצ'ה", category: 'כריכים', price: 0 },
+  'sandwiches_scrambled_bun': { row: 86, name: 'לחמניה מקושקשת', category: 'כריכים', price: 0 },
+  'vitrina_chocolate_fudge': { row: 87, name: "פאדג' שוקולד", category: 'קינוחי ויטרינה', price: 0 },
+  'sweet_brownies_hazelnut': { row: 88, name: 'מאפה בראוניז לוז', category: 'מאפים מתוקים', price: 0 }
 };

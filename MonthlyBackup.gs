@@ -146,6 +146,15 @@ const BACKUP_PRODUCT_ROW_MAP = {
   various_butter: { row: 79, name: 'חמאה', category: 'מוצרים שונים' },
   various_pistachio_berry_strip: { row: 80, name: 'פס פיסטוק פירות יער', category: 'מוצרים שונים' },
   various_pressburger_poppy: { row: 81, name: 'פרסבורגר פרג', category: 'מוצרים שונים' },
+
+  // New products added April 2026 - rows 82-88
+  sweet_brioche_sugar: { row: 82, name: 'בריוש סוכרה', category: 'מאפים מתוקים' },
+  salty_poppy_bun: { row: 83, name: 'לחמניית פרג', category: 'מלוחים' },
+  salty_pretzel: { row: 84, name: 'פרעצל', category: 'מלוחים' },
+  sandwiches_focaccia: { row: 85, name: "כריך פוקאצ'ה", category: 'כריכים' },
+  sandwiches_scrambled_bun: { row: 86, name: 'לחמניה מקושקשת', category: 'כריכים' },
+  vitrina_chocolate_fudge: { row: 87, name: "פאדג' שוקולד", category: 'קינוחי ויטרינה' },
+  sweet_brownies_hazelnut: { row: 88, name: 'מאפה בראוניז לוז', category: 'מאפים מתוקים' },
 };
 
 const BACKUP_COLUMNS = {
@@ -162,24 +171,9 @@ const BACKUP_COLUMNS = {
   CONFIRMATION_TIME: 13,
 };
 
-const BACKUP_CUSTOM_PRODUCTS_START_ROW = 82; // Row 81 is last regular product, 82+ for אחרים
+const BACKUP_CUSTOM_PRODUCTS_START_ROW = 89; // Row 88 is last regular product, 89+ for אחרים
 
-// ============================================================================
-// CUSTOM MENU - Adds menu to spreadsheet UI
-// ============================================================================
-
-function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-  ui.createMenu('🗂️ גיבוי ואיפוס')
-    .addItem('📦 גיבוי ואיפוס חודשי', 'manualBackupAndReset')
-    .addItem('📁 גיבוי בלבד (ללא איפוס)', 'manualBackupOnly')
-    .addSeparator()
-    .addItem('⚙️ עדכון מבנה מוצרים בכל הגיליונות', 'updateAllSheetsStructure')
-    .addItem('🗑️ מחיקת גיליונות שגויים (1-9)', 'removeIncorrectlyNamedSheets')
-    .addSeparator()
-    .addItem('ℹ️ בדיקת מצב מערכת', 'checkCurrentMode')
-    .addToUi();
-}
+// NOTE: onOpen() is defined in Code.gs (merged menu). Do not redefine here.
 
 // ============================================================================
 // MAIN FUNCTION - Called by trigger (PRODUCTION) or manually (TEST)
