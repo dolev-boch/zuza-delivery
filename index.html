@@ -212,152 +212,121 @@
         margin-bottom: 8px;
       }
 
-      /* Custom Select Dropdown */
-      .custom-select-wrapper {
-        position: relative;
-        width: 100px;
+      /* Quantity Input */
+      .qty-wrapper {
         flex-shrink: 0;
       }
 
-      .custom-select-trigger {
-        width: 100%;
-        padding: 12px;
+      .qty-input {
+        width: 90px;
+        height: 48px;
+        padding: 8px;
         border: 2px solid var(--border);
         border-radius: 8px;
-        background: var(--white);
-        font-size: 16px;
-        font-weight: 600;
+        font-size: 22px;
+        font-weight: 700;
         text-align: center;
-        cursor: pointer;
-        user-select: none;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        transition: all 0.2s;
-      }
-
-      .custom-select-trigger:active {
-        border-color: var(--gold);
-      }
-
-      .custom-select-trigger.open {
-        border-color: var(--gold);
-        border-bottom-left-radius: 0;
-        border-bottom-right-radius: 0;
-      }
-
-      .select-arrow {
-        font-size: 10px;
-        transition: transform 0.2s;
-      }
-
-      .custom-select-trigger.open .select-arrow {
-        transform: rotate(180deg);
-      }
-
-      .custom-select-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
         background: var(--white);
-        border: 2px solid var(--gold);
-        border-top: none;
-        border-bottom-left-radius: 8px;
-        border-bottom-right-radius: 8px;
-        box-shadow: var(--shadow-lg);
-        z-index: 1000;
-        display: none;
-        max-height: 280px;
-        overflow: hidden;
-      }
-
-      .custom-select-dropdown.open {
+        color: var(--text);
+        transition: border-color 0.2s, background 0.2s;
+        -moz-appearance: textfield;
+        appearance: textfield;
         display: block;
+        touch-action: manipulation;
       }
 
-      .select-search {
-        padding: 10px;
-        border-bottom: 2px solid var(--border);
-        position: sticky;
-        top: 0;
-        background: var(--white);
-        z-index: 1;
+      .qty-input::-webkit-outer-spin-button,
+      .qty-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
       }
 
-      .select-search input {
-        width: 100%;
-        padding: 10px;
-        border: 2px solid var(--border);
-        border-radius: 6px;
-        font-size: 16px;
-        text-align: center;
-      }
-
-      .select-search input:focus {
+      .qty-input:focus {
         outline: none;
         border-color: var(--gold);
+        background: #fffdf5;
       }
 
-      .select-options {
-        max-height: 200px;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+      .qty-input.has-value {
+        border-color: var(--dark-green);
+        background: #f0faf0;
+        color: var(--dark-green);
       }
 
-      .select-option {
-        padding: 12px;
-        text-align: center;
-        cursor: pointer;
-        font-size: 16px;
-        font-weight: 600;
-        border-bottom: 1px solid var(--border);
-        transition: background 0.15s;
+      .qty-input.over-limit {
+        border-color: var(--error);
+        background: #fff5f5;
       }
 
-      .select-option:last-child {
-        border-bottom: none;
-      }
-
-      .select-option:active {
-        background: var(--gold);
-        color: var(--white);
-      }
-
-      .select-option.hidden {
+      /* High Qty Confirmation Dialog */
+      .qty-confirm-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        z-index: 20000;
         display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
       }
 
-      .no-results {
-        padding: 20px;
-        text-align: center;
-        color: var(--text-light);
-        font-size: 14px;
+      .qty-confirm-overlay.show {
+        display: flex;
       }
 
-      /* Override quantity input (for amounts > 50) */
-      .override-qty-input {
-        width: 76px;
-        padding: 10px 6px;
-        border: 2px solid var(--border);
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        text-align: center;
-        flex-shrink: 0;
+      .qty-confirm-box {
         background: var(--white);
-        transition: border-color 0.2s;
+        border-radius: 16px;
+        padding: 28px 24px 20px;
+        max-width: 340px;
+        width: 100%;
+        text-align: center;
+        box-shadow: var(--shadow-lg);
       }
 
-      .override-qty-input:focus {
-        outline: none;
-        border-color: var(--gold);
+      .qty-confirm-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--dark-green);
+        margin-bottom: 14px;
       }
 
-      .override-qty-input::placeholder {
-        font-size: 11px;
-        color: #aaa;
-        font-weight: 400;
+      .qty-confirm-msg {
+        font-size: 16px;
+        color: var(--text);
+        line-height: 1.6;
+        margin-bottom: 24px;
+      }
+
+      .qty-confirm-msg strong {
+        color: var(--error);
+        font-size: 20px;
+      }
+
+      .qty-confirm-btns {
+        display: flex;
+        gap: 12px;
+      }
+
+      .qty-confirm-btns button {
+        flex: 1;
+        padding: 14px 8px;
+        border: none;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .qty-confirm-cancel {
+        background: var(--border);
+        color: var(--text);
+      }
+
+      .qty-confirm-ok {
+        background: var(--dark-green);
+        color: var(--gold);
       }
 
       /* Quick Buttons */
@@ -779,21 +748,6 @@
         font-weight: 600;
       }
 
-      /* Overlay to close dropdown */
-      .select-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 999;
-        display: none;
-      }
-
-      .select-overlay.active {
-        display: block;
-      }
-
       /* iOS Specific */
       @supports (-webkit-touch-callout: none) {
         input,
@@ -826,17 +780,14 @@
       }
 
       /* Scrollbar */
-      .select-options::-webkit-scrollbar,
       .review-body::-webkit-scrollbar {
         width: 6px;
       }
 
-      .select-options::-webkit-scrollbar-track,
       .review-body::-webkit-scrollbar-track {
         background: var(--light-bg);
       }
 
-      .select-options::-webkit-scrollbar-thumb,
       .review-body::-webkit-scrollbar-thumb {
         background: var(--gold);
         border-radius: 3px;
@@ -855,8 +806,17 @@
     <!-- Messages -->
     <div id="messageContainer" class="message"></div>
 
-    <!-- Select Overlay -->
-    <div class="select-overlay" id="selectOverlay"></div>
+    <!-- High Quantity Confirmation Dialog -->
+    <div class="qty-confirm-overlay" id="qtyConfirmOverlay">
+      <div class="qty-confirm-box">
+        <div class="qty-confirm-title">⚠️ כמות גבוהה</div>
+        <p class="qty-confirm-msg" id="qtyConfirmMsg"></p>
+        <div class="qty-confirm-btns">
+          <button class="qty-confirm-cancel" onclick="cancelHighQty()">ביטול ותיקון</button>
+          <button class="qty-confirm-ok" onclick="confirmHighQty()">כן, המשך</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Review Modal -->
     <div class="review-modal" id="reviewModal">
@@ -976,7 +936,7 @@
       const CONFIG = {
         API_URL:
           'https://script.google.com/macros/s/AKfycbzdxZEpJPFaFtYiDDKa_4BmNWsehU8RENKq6TpgODu5-kcREwWIwJ7LjnkkjzWM1QpSgA/exec',
-        MAX_QUANTITY: 50,
+        MAX_QUANTITY: 150,
         QUICK_AMOUNTS: [2, 4, 5, 10],
         MAX_RETRIES: 3,
         RETRY_DELAY: 2000,
@@ -986,8 +946,8 @@
       const State = {
         customProductCounter: 0,
         isSubmitting: false,
-        openSelectId: null,
         reviewData: null,
+        pendingHighQty: null, // { productKey, input, value }
       };
 
       // PRODUCT KEYS
@@ -1013,7 +973,6 @@
         // Salty - מלוחים
         'לחמניה ריקה': 'salty_empty_bun',
         'בייגל ריק': 'salty_empty_bagel',
-        'לחמנית פרג ריקה': 'salty_empty_poppy_bun',
         'בורקס גבינה ריק': 'salty_empty_cheese_bourekas',
         'מאפה מלוח (מלבן)': 'salty_rectangle_pastry',
         "ריבועי פוקאצ'ה": 'salty_focaccia_squares',
@@ -1128,7 +1087,6 @@
           products: [
             'לחמניה ריקה',
             'בייגל ריק',
-            'לחמנית פרג ריקה',
             'בורקס גבינה ריק',
             'מאפה מלוח (מלבן)',
             "ריבועי פוקאצ'ה",
@@ -1240,153 +1198,88 @@
         return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       }
 
-      // Custom Select Functions
-      function createCustomSelect(productKey) {
-        const selectId = `select_${productKey}`;
-        const options = Array.from({ length: CONFIG.MAX_QUANTITY + 1 }, (_, i) => i); // 0–50
-
+      // Quantity Input Functions
+      function createQtyInput(productKey) {
         return `
-          <div class="custom-select-wrapper" data-select-id="${selectId}">
-            <div class="custom-select-trigger" onclick="toggleSelect('${selectId}')">
-              <span class="select-value" id="${selectId}_value">0</span>
-              <span class="select-arrow">▼</span>
-            </div>
-            <div class="custom-select-dropdown" id="${selectId}_dropdown">
-              <div class="select-search">
-                <input
-                  type="text"
-                  placeholder="חיפוש..."
-                  oninput="filterOptions('${selectId}', this.value)"
-                  onclick="event.stopPropagation()"
-                />
-              </div>
-              <div class="select-options" id="${selectId}_options">
-                ${options
-                  .map(
-                    (val) =>
-                      `<div class="select-option" onclick="selectValue('${selectId}', ${val})">${val}</div>`
-                  )
-                  .join('')}
-              </div>
-            </div>
-            <input type="hidden" name="${productKey}_quantity" id="${selectId}_input" value="0" />
+          <div class="qty-wrapper">
+            <input
+              type="number"
+              class="qty-input"
+              id="${productKey}_qty"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              min="0"
+              value="0"
+              autocomplete="off"
+              onfocus="this.select()"
+              onblur="handleQtyBlur('${productKey}', this)"
+            />
+            <input type="hidden" name="${productKey}_quantity" id="${productKey}_hidden" value="0" />
           </div>
-          <input
-            type="number"
-            class="override-qty-input"
-            id="${selectId}_override"
-            placeholder=">50"
-            min="51"
-            step="1"
-            oninput="handleOverrideQty('${selectId}', this.value)"
-            title="הזן כמות מעל 50"
-          />
         `;
       }
 
-      function handleOverrideQty(selectId, value) {
-        const numVal = parseInt(value, 10);
-        const input = document.getElementById(`${selectId}_input`);
-        const displayVal = document.getElementById(`${selectId}_value`);
+      function setQtyValue(productKey, val) {
+        const hidden = document.getElementById(`${productKey}_hidden`);
+        if (hidden) hidden.value = val;
+      }
 
-        if (value !== '' && !isNaN(numVal) && numVal > 0) {
-          input.value = numVal;
-          displayVal.textContent = numVal;
-          if (State.openSelectId === selectId) closeSelect(selectId);
-        } else if (value === '') {
-          // Revert hidden input to 0 when override is cleared
+      function updateQtyStyle(input, val) {
+        input.classList.toggle('has-value', val > 0);
+        input.classList.toggle('over-limit', val > CONFIG.MAX_QUANTITY);
+      }
+
+      function handleQtyBlur(productKey, input) {
+        const raw = input.value.trim();
+        const val = raw === '' ? 0 : parseInt(raw, 10);
+
+        if (isNaN(val) || val < 0) {
           input.value = 0;
-          displayVal.textContent = 0;
-        }
-      }
-
-      function toggleSelect(selectId) {
-        const dropdown = document.getElementById(`${selectId}_dropdown`);
-        const trigger = dropdown.previousElementSibling;
-        const overlay = document.getElementById('selectOverlay');
-
-        if (State.openSelectId && State.openSelectId !== selectId) {
-          closeSelect(State.openSelectId);
+          setQtyValue(productKey, 0);
+          updateQtyStyle(input, 0);
+          return;
         }
 
-        const isOpen = dropdown.classList.contains('open');
-
-        if (isOpen) {
-          closeSelect(selectId);
+        if (val > CONFIG.MAX_QUANTITY) {
+          State.pendingHighQty = { productKey, input, value: val };
+          document.getElementById('qtyConfirmMsg').innerHTML =
+            `הכמות שהזנת היא <strong>${val}</strong> יחידות.<br>האם אתה בטוח שזו אינה טעות?`;
+          document.getElementById('qtyConfirmOverlay').classList.add('show');
         } else {
-          dropdown.classList.add('open');
-          trigger.classList.add('open');
-          overlay.classList.add('active');
-          State.openSelectId = selectId;
-
-          const searchInput = dropdown.querySelector('input[type="text"]');
-          if (searchInput) {
-            searchInput.value = '';
-            filterOptions(selectId, '');
-          }
-
-          setTimeout(() => {
-            const selectedValue = document.getElementById(`${selectId}_input`).value;
-            const options = dropdown.querySelectorAll('.select-option');
-            options.forEach((opt) => {
-              if (opt.textContent.trim() === selectedValue) {
-                opt.scrollIntoView({ block: 'center' });
-              }
-            });
-          }, 50);
+          input.value = val;
+          setQtyValue(productKey, val);
+          updateQtyStyle(input, val);
         }
       }
 
-      function closeSelect(selectId) {
-        const dropdown = document.getElementById(`${selectId}_dropdown`);
-        const trigger = dropdown.previousElementSibling;
-        const overlay = document.getElementById('selectOverlay');
-
-        dropdown.classList.remove('open');
-        trigger.classList.remove('open');
-        overlay.classList.remove('active');
-        State.openSelectId = null;
-      }
-
-      function selectValue(selectId, value) {
-        document.getElementById(`${selectId}_value`).textContent = value;
-        document.getElementById(`${selectId}_input`).value = value;
-        const override = document.getElementById(`${selectId}_override`);
-        if (override) override.value = '';
-        closeSelect(selectId);
-      }
-
-      function filterOptions(selectId, searchTerm) {
-        const optionsContainer = document.getElementById(`${selectId}_options`);
-        const options = optionsContainer.querySelectorAll('.select-option');
-        let visibleCount = 0;
-
-        options.forEach((option) => {
-          const value = option.textContent;
-          if (value.includes(searchTerm)) {
-            option.classList.remove('hidden');
-            visibleCount++;
-          } else {
-            option.classList.add('hidden');
-          }
-        });
-
-        let noResults = optionsContainer.querySelector('.no-results');
-        if (visibleCount === 0) {
-          if (!noResults) {
-            noResults = document.createElement('div');
-            noResults.className = 'no-results';
-            noResults.textContent = 'לא נמצאו תוצאות';
-            optionsContainer.appendChild(noResults);
-          }
-        } else if (noResults) {
-          noResults.remove();
+      function confirmHighQty() {
+        if (State.pendingHighQty) {
+          const { productKey, input, value } = State.pendingHighQty;
+          input.value = value;
+          setQtyValue(productKey, value);
+          updateQtyStyle(input, value);
+          State.pendingHighQty = null;
         }
+        document.getElementById('qtyConfirmOverlay').classList.remove('show');
+      }
+
+      function cancelHighQty() {
+        if (State.pendingHighQty) {
+          const { productKey, input } = State.pendingHighQty;
+          input.value = 0;
+          setQtyValue(productKey, 0);
+          updateQtyStyle(input, 0);
+          State.pendingHighQty = null;
+        }
+        document.getElementById('qtyConfirmOverlay').classList.remove('show');
       }
 
       function quickSet(productKey, amount) {
-        const selectId = `select_${productKey}`;
-        selectValue(selectId, amount);
+        const input = document.getElementById(`${productKey}_qty`);
+        if (!input) return;
+        input.value = amount;
+        setQtyValue(productKey, amount);
+        updateQtyStyle(input, amount);
       }
 
       // UI Functions
@@ -1462,7 +1355,7 @@
           <div class="product-item">
             <div class="product-name">${productName}</div>
             <div class="product-controls">
-              ${createCustomSelect(productKey)}
+              ${createQtyInput(productKey)}
               <div class="quick-buttons">
                 ${CONFIG.QUICK_AMOUNTS.map(
                   (amt) =>
@@ -1470,8 +1363,8 @@
                 ).join('')}
               </div>
             </div>
-            <textarea 
-              class="notes-field" 
+            <textarea
+              class="notes-field"
               name="${productKey}_notes"
               placeholder="הערות (אופציונלי)"
               rows="2"
@@ -1556,7 +1449,7 @@
             />
             <div id="validation_message_${counter}" class="validation-message" style="display: none;"></div>
             <div class="product-controls">
-              ${createCustomSelect(productKey)}
+              ${createQtyInput(productKey)}
               <div class="quick-buttons">
                 ${CONFIG.QUICK_AMOUNTS.map(
                   (amt) =>
@@ -1796,16 +1689,14 @@
         form.reset();
         setTodayDate();
 
-        document.querySelectorAll('.select-value').forEach((el) => {
-          el.textContent = '0';
+        document.querySelectorAll('.qty-input').forEach((el) => {
+          el.value = '0';
+          el.classList.remove('has-value', 'over-limit');
         });
         document.querySelectorAll('input[type="hidden"]').forEach((el) => {
-          if (el.name.includes('_quantity')) {
+          if (el.name && el.name.includes('_quantity')) {
             el.value = '0';
           }
-        });
-        document.querySelectorAll('.override-qty-input').forEach((el) => {
-          el.value = '';
         });
 
         document.getElementById('customProductsList').innerHTML = '';
@@ -1943,12 +1834,6 @@
 
         setTodayDate();
 
-        document.getElementById('selectOverlay').addEventListener('click', () => {
-          if (State.openSelectId) {
-            closeSelect(State.openSelectId);
-          }
-        });
-
         document.querySelectorAll('.category-header').forEach((header) => {
           header.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -1964,10 +1849,10 @@
 
       // Global functions
       window.toggleCategory = toggleCategory;
-      window.toggleSelect = toggleSelect;
-      window.selectValue = selectValue;
-      window.filterOptions = filterOptions;
       window.quickSet = quickSet;
+      window.handleQtyBlur = handleQtyBlur;
+      window.confirmHighQty = confirmHighQty;
+      window.cancelHighQty = cancelHighQty;
       window.addCustomProduct = addCustomProduct;
       window.removeCustomProduct = removeCustomProduct;
       window.openReview = openReview;
