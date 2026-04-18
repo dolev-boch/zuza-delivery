@@ -241,6 +241,13 @@
         margin: 0;
       }
 
+      .qty-input::placeholder {
+        color: var(--gold);
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 1;
+      }
+
       .qty-input:focus {
         outline: none;
         border-color: var(--gold);
@@ -327,6 +334,84 @@
       .qty-confirm-ok {
         background: var(--dark-green);
         color: var(--gold);
+      }
+
+      /* Update Notice Popup */
+      .update-notice-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 30000;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 0 0 env(safe-area-inset-bottom, 0);
+      }
+
+      .update-notice-overlay.hidden {
+        display: none;
+      }
+
+      .update-notice-box {
+        background: var(--white);
+        border-radius: 20px 20px 0 0;
+        padding: 28px 24px 32px;
+        width: 100%;
+        max-width: 600px;
+        box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18);
+        animation: slideUpNotice 0.3s ease-out;
+      }
+
+      @keyframes slideUpNotice {
+        from { transform: translateY(100%); opacity: 0; }
+        to   { transform: translateY(0);   opacity: 1; }
+      }
+
+      .update-notice-icon {
+        font-size: 32px;
+        text-align: center;
+        margin-bottom: 10px;
+      }
+
+      .update-notice-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--dark-green);
+        text-align: center;
+        margin-bottom: 12px;
+        font-family: Georgia, serif;
+        letter-spacing: 0.5px;
+      }
+
+      .update-notice-body {
+        font-size: 16px;
+        color: var(--text);
+        line-height: 1.7;
+        text-align: center;
+        margin-bottom: 24px;
+        padding: 16px;
+        background: #f5f0e8;
+        border-radius: 10px;
+        border-right: 4px solid var(--gold);
+      }
+
+      .update-notice-close {
+        display: block;
+        width: 100%;
+        padding: 16px;
+        background: var(--dark-green);
+        color: var(--gold);
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+        letter-spacing: 0.5px;
+      }
+
+      .update-notice-close:active {
+        opacity: 0.85;
       }
 
       /* Quick Buttons */
@@ -818,6 +903,19 @@
       </div>
     </div>
 
+    <!-- Update Notice Popup -->
+    <div class="update-notice-overlay hidden" id="updateNoticeOverlay">
+      <div class="update-notice-box">
+        <div class="update-notice-icon">🥐</div>
+        <div class="update-notice-title">עדכון מערכת</div>
+        <div class="update-notice-body">
+          התווספו מוצרים נוספים לרשימה.<br />
+          נא לבדוק לפני רשימת מוצר עצמאית ב"אחרים".
+        </div>
+        <button class="update-notice-close" onclick="dismissUpdateNotice()">סגירת ההודעה</button>
+      </div>
+    </div>
+
     <!-- Review Modal -->
     <div class="review-modal" id="reviewModal">
       <div class="review-content">
@@ -1209,9 +1307,8 @@
               inputmode="numeric"
               pattern="[0-9]*"
               min="0"
-              value="0"
+              placeholder="כמות"
               autocomplete="off"
-              onfocus="this.select()"
               onblur="handleQtyBlur('${productKey}', this)"
             />
             <input type="hidden" name="${productKey}_quantity" id="${productKey}_hidden" value="0" />
@@ -1690,7 +1787,7 @@
         setTodayDate();
 
         document.querySelectorAll('.qty-input').forEach((el) => {
-          el.value = '0';
+          el.value = '';
           el.classList.remove('has-value', 'over-limit');
         });
         document.querySelectorAll('input[type="hidden"]').forEach((el) => {
@@ -1821,6 +1918,19 @@
         document.getElementById('deliveryDate').value = israeliDate;
       }
 
+      const UPDATE_NOTICE_KEY = 'zuza_update_notice_v1_dismissed';
+
+      function showUpdateNoticeIfNeeded() {
+        if (!localStorage.getItem(UPDATE_NOTICE_KEY)) {
+          document.getElementById('updateNoticeOverlay').classList.remove('hidden');
+        }
+      }
+
+      function dismissUpdateNotice() {
+        localStorage.setItem(UPDATE_NOTICE_KEY, '1');
+        document.getElementById('updateNoticeOverlay').classList.add('hidden');
+      }
+
       function initializeApp() {
         const container = document.getElementById('categoriesContainer');
         let html = '';
@@ -1845,9 +1955,12 @@
 
         console.log('Zuza Patisserie - Form Ready with Hanukkah 2025 + Review Step');
         console.log('Product mappings loaded:', Object.keys(PRODUCT_KEYS).length);
+
+        showUpdateNoticeIfNeeded();
       }
 
       // Global functions
+      window.dismissUpdateNotice = dismissUpdateNotice;
       window.toggleCategory = toggleCategory;
       window.quickSet = quickSet;
       window.handleQtyBlur = handleQtyBlur;
