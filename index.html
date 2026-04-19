@@ -2165,19 +2165,13 @@
           .map(
             (p) => `
           <div class="search-result-item"
-               onmousedown="selectSearchResult('${p.key}','${p.categoryKey}')"
-               ontouchstart="handleResultTouch(event,'${p.key}','${p.categoryKey}')">
+               onclick="selectSearchResult('${p.key}','${p.categoryKey}')">
             <span class="search-result-name">${highlightMatch(p.name, query)}</span>
             <span class="search-result-category">${p.category}</span>
           </div>`
           )
           .join('');
         resultsEl.classList.add('open');
-      }
-
-      function handleResultTouch(e, productKey, categoryKey) {
-        e.preventDefault();
-        selectSearchResult(productKey, categoryKey);
       }
 
       function selectSearchResult(productKey, categoryKey) {
@@ -2269,7 +2263,6 @@
 
       // Global functions
       window.handleSearchInput = handleSearchInput;
-      window.handleResultTouch = handleResultTouch;
       window.selectSearchResult = selectSearchResult;
       window.clearSearch = clearSearch;
       window.dismissUpdateNotice = dismissUpdateNotice;
