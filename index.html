@@ -414,6 +414,172 @@
         opacity: 0.85;
       }
 
+      /* Product Search Bar */
+      .search-section {
+        background: var(--white);
+        border-radius: 12px;
+        padding: 16px 20px 4px;
+        margin-bottom: 16px;
+        box-shadow: var(--shadow);
+      }
+
+      .search-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--dark-green);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .search-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+
+      .search-icon {
+        position: absolute;
+        right: 14px;
+        color: var(--gold);
+        pointer-events: none;
+        flex-shrink: 0;
+      }
+
+      .search-field {
+        width: 100%;
+        height: 50px;
+        padding: 0 44px 0 44px;
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        font-size: 17px;
+        font-family: inherit;
+        background: var(--white);
+        color: var(--text);
+        transition: border-color 0.2s;
+        -webkit-appearance: none;
+        appearance: none;
+        direction: rtl;
+      }
+
+      .search-field:focus {
+        outline: none;
+        border-color: var(--gold);
+        background: #fffdf5;
+      }
+
+      .search-field::placeholder {
+        color: #bbb;
+        font-size: 15px;
+      }
+
+      .search-clear-btn {
+        position: absolute;
+        left: 12px;
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: var(--border);
+        color: var(--text-light);
+        border-radius: 50%;
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        font-family: inherit;
+        touch-action: manipulation;
+      }
+
+      .search-clear-btn.visible {
+        display: flex;
+      }
+
+      .search-results {
+        border-radius: 10px;
+        overflow: hidden;
+        max-height: 0;
+        transition: max-height 0.2s ease;
+        margin-bottom: 0;
+      }
+
+      .search-results.open {
+        max-height: 320px;
+        overflow-y: auto;
+        border: 2px solid var(--border);
+        margin-bottom: 12px;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .search-result-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 13px 16px;
+        background: var(--white);
+        border-bottom: 1px solid #f0ece4;
+        cursor: pointer;
+        -webkit-tap-highlight-color: rgba(196, 165, 117, 0.15);
+        touch-action: manipulation;
+      }
+
+      .search-result-item:last-child {
+        border-bottom: none;
+      }
+
+      .search-result-item:active,
+      .search-result-item.pressing {
+        background: #fdf6e8;
+      }
+
+      .search-result-name {
+        font-size: 15px;
+        color: var(--text);
+        font-weight: 500;
+        flex: 1;
+        text-align: right;
+      }
+
+      .search-highlight {
+        background: transparent;
+        color: var(--dark-green);
+        font-weight: 700;
+      }
+
+      .search-result-category {
+        font-size: 12px;
+        background: var(--dark-green);
+        color: var(--gold);
+        padding: 3px 9px;
+        border-radius: 20px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        font-weight: 500;
+      }
+
+      .search-no-results {
+        padding: 16px;
+        text-align: center;
+        color: var(--text-light);
+        font-size: 15px;
+        background: var(--white);
+      }
+
+      .product-item.search-flash {
+        animation: searchFlash 1.6s ease-out forwards;
+      }
+
+      @keyframes searchFlash {
+        0%   { background: #fff8e1; }
+        30%  { background: #ffeaa0; }
+        100% { background: transparent; }
+      }
+
       /* Quick Buttons */
       .quick-buttons {
         display: flex;
@@ -1002,6 +1168,36 @@
             <input type="text" id="fillerName" name="fillerName" required placeholder="שם מלא" />
           </div>
         </section>
+
+        <!-- Product Search -->
+        <div class="search-section">
+          <div class="search-label">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8" stroke-width="2"/>
+              <path d="M21 21l-4.35-4.35" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            חיפוש מוצר
+          </div>
+          <div class="search-input-wrapper">
+            <svg class="search-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8" stroke-width="2"/>
+              <path d="M21 21l-4.35-4.35" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <input
+              type="search"
+              class="search-field"
+              id="productSearch"
+              placeholder="הקלד שם מוצר..."
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              oninput="handleSearchInput()"
+            />
+            <button type="button" class="search-clear-btn" id="searchClearBtn" onclick="clearSearch()">✕</button>
+          </div>
+          <div class="search-results" id="searchResults"></div>
+        </div>
 
         <!-- Categories Container -->
         <div id="categoriesContainer"></div>
@@ -1918,6 +2114,109 @@
         document.getElementById('deliveryDate').value = israeliDate;
       }
 
+      // Product Search
+      let searchIndex = [];
+
+      function buildSearchIndex() {
+        searchIndex = [];
+        Object.entries(CATEGORIES).forEach(([catKey, catData]) => {
+          catData.products.forEach((p) => {
+            const name = typeof p === 'object' ? p.name : p;
+            const key = typeof p === 'object' ? p.key : PRODUCT_KEYS[p];
+            if (key) searchIndex.push({ name, key, category: catData.name, categoryKey: catKey });
+          });
+        });
+      }
+
+      function highlightMatch(text, query) {
+        const idx = text.indexOf(query);
+        if (idx === -1) return text;
+        return (
+          text.slice(0, idx) +
+          '<mark class="search-highlight">' +
+          text.slice(idx, idx + query.length) +
+          '</mark>' +
+          text.slice(idx + query.length)
+        );
+      }
+
+      function handleSearchInput() {
+        const query = document.getElementById('productSearch').value.trim();
+        const clearBtn = document.getElementById('searchClearBtn');
+        const resultsEl = document.getElementById('searchResults');
+
+        clearBtn.classList.toggle('visible', query.length > 0);
+
+        if (!query) {
+          resultsEl.innerHTML = '';
+          resultsEl.classList.remove('open');
+          return;
+        }
+
+        const matches = searchIndex.filter((p) => p.name.includes(query));
+
+        if (!matches.length) {
+          resultsEl.innerHTML = '<div class="search-no-results">לא נמצאו מוצרים</div>';
+          resultsEl.classList.add('open');
+          return;
+        }
+
+        resultsEl.innerHTML = matches
+          .map(
+            (p) => `
+          <div class="search-result-item"
+               onmousedown="selectSearchResult('${p.key}','${p.categoryKey}')"
+               ontouchstart="handleResultTouch(event,'${p.key}','${p.categoryKey}')">
+            <span class="search-result-name">${highlightMatch(p.name, query)}</span>
+            <span class="search-result-category">${p.category}</span>
+          </div>`
+          )
+          .join('');
+        resultsEl.classList.add('open');
+      }
+
+      function handleResultTouch(e, productKey, categoryKey) {
+        e.preventDefault();
+        selectSearchResult(productKey, categoryKey);
+      }
+
+      function selectSearchResult(productKey, categoryKey) {
+        const content = document.getElementById(`${categoryKey}-content`);
+        const header = document.querySelector(`[data-category="${categoryKey}"]`);
+        if (content && !content.classList.contains('active')) {
+          content.classList.add('active');
+          if (header) header.classList.add('active');
+        }
+
+        clearSearch();
+
+        setTimeout(() => {
+          const qtyInput = document.getElementById(`${productKey}_qty`);
+          if (!qtyInput) return;
+          const productItem = qtyInput.closest('.product-item');
+          if (productItem) {
+            productItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            productItem.classList.remove('search-flash');
+            void productItem.offsetWidth; // reflow to restart animation
+            productItem.classList.add('search-flash');
+            productItem.addEventListener(
+              'animationend',
+              () => productItem.classList.remove('search-flash'),
+              { once: true }
+            );
+          }
+          setTimeout(() => qtyInput.focus(), 350);
+        }, 80);
+      }
+
+      function clearSearch() {
+        document.getElementById('productSearch').value = '';
+        document.getElementById('searchClearBtn').classList.remove('visible');
+        const resultsEl = document.getElementById('searchResults');
+        resultsEl.innerHTML = '';
+        resultsEl.classList.remove('open');
+      }
+
       const UPDATE_NOTICE_KEY = 'zuza_update_notice_v1_dismissed';
 
       function showUpdateNoticeIfNeeded() {
@@ -1953,6 +2252,15 @@
           });
         });
 
+        buildSearchIndex();
+
+        document.addEventListener('click', (e) => {
+          const searchSection = document.querySelector('.search-section');
+          if (searchSection && !searchSection.contains(e.target)) {
+            document.getElementById('searchResults').classList.remove('open');
+          }
+        });
+
         console.log('Zuza Patisserie - Form Ready with Hanukkah 2025 + Review Step');
         console.log('Product mappings loaded:', Object.keys(PRODUCT_KEYS).length);
 
@@ -1960,6 +2268,10 @@
       }
 
       // Global functions
+      window.handleSearchInput = handleSearchInput;
+      window.handleResultTouch = handleResultTouch;
+      window.selectSearchResult = selectSearchResult;
+      window.clearSearch = clearSearch;
       window.dismissUpdateNotice = dismissUpdateNotice;
       window.toggleCategory = toggleCategory;
       window.quickSet = quickSet;
