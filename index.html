@@ -127,7 +127,23 @@
         border-radius: 8px;
         font-size: 16px;
         background: var(--white);
+        color: var(--text);
         transition: border-color 0.2s;
+        -webkit-appearance: none;
+        appearance: none;
+        min-height: 52px;
+        box-sizing: border-box;
+        font-family: inherit;
+      }
+
+      input[type='date']::-webkit-date-and-time-value {
+        text-align: right;
+        min-height: 1.4em;
+      }
+
+      input[type='date']::-webkit-calendar-picker-indicator {
+        opacity: 0.5;
+        cursor: pointer;
       }
 
       input:focus {

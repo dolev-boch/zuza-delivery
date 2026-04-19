@@ -317,10 +317,18 @@ function resetAllSheetsForBackup() {
 
     Logger.log('Starting to reset 31 sheets...');
 
+    const PROTECTED_SHEETS = ['סיכום חודש'];
+
     for (let day = 1; day <= 31; day++) {
       try {
         // Format day as "01", "02", ..., "09", "10", ..., "31"
         const sheetName = day < 10 ? '0' + day : day.toString();
+
+        if (PROTECTED_SHEETS.includes(sheetName)) {
+          Logger.log('⛔ Skipping protected sheet: ' + sheetName);
+          continue;
+        }
+
         let sheet = ss.getSheetByName(sheetName);
 
         if (!sheet) {
@@ -362,6 +370,11 @@ function resetAllSheetsForBackup() {
 // ============================================================================
 
 function setupSheetStructureForBackup(sheet) {
+  if (sheet.getName() === 'סיכום חודש') {
+    Logger.log('⛔ Blocked: will not touch סיכום חודש');
+    return;
+  }
+
   // Clear ALL content and formats to ensure clean reset
   sheet.clear();
 
