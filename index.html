@@ -244,7 +244,9 @@
         text-align: center;
         background: var(--white);
         color: var(--text);
-        transition: border-color 0.2s, background 0.2s;
+        transition:
+          border-color 0.2s,
+          background 0.2s;
         -moz-appearance: textfield;
         appearance: textfield;
         display: block;
@@ -352,6 +354,138 @@
         color: var(--gold);
       }
 
+      /* Add Fixed Product ("מוצר קבוע") */
+      .add-fixed-product-section {
+        margin: 0 0 16px;
+      }
+
+      .add-fixed-product-btn {
+        width: 100%;
+        padding: 14px;
+        background: var(--white);
+        color: var(--dark-green);
+        border: 2px dashed var(--gold);
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .add-fixed-product-btn:active {
+        opacity: 0.8;
+      }
+
+      .fixed-product-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        z-index: 20000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .fixed-product-overlay.show {
+        display: flex;
+      }
+
+      .fixed-product-box {
+        background: var(--white);
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 380px;
+        width: 100%;
+        box-shadow: var(--shadow-lg);
+      }
+
+      .fixed-product-title {
+        font-size: 19px;
+        font-weight: 700;
+        color: var(--dark-green);
+        margin-bottom: 6px;
+      }
+
+      .fixed-product-subtitle {
+        font-size: 13px;
+        color: var(--text);
+        opacity: 0.75;
+        line-height: 1.5;
+        margin-bottom: 18px;
+      }
+
+      .fixed-product-box select {
+        width: 100%;
+        padding: 14px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 16px;
+        background: var(--white);
+        color: var(--text);
+        min-height: 52px;
+        box-sizing: border-box;
+        font-family: inherit;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      .fixed-product-box select:focus,
+      .fixed-product-box input:focus {
+        outline: none;
+        border-color: var(--gold);
+      }
+
+      .fixed-product-msg {
+        font-size: 14px;
+        line-height: 1.5;
+        margin-top: 4px;
+        min-height: 18px;
+      }
+
+      .fixed-product-msg.error {
+        color: var(--error);
+      }
+      .fixed-product-msg.success {
+        color: #2e7d32;
+      }
+
+      .fixed-product-btns {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .fixed-product-btns button {
+        flex: 1;
+        padding: 14px 8px;
+        border: none;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .fixed-product-cancel {
+        background: var(--border);
+        color: var(--text);
+      }
+
+      .fixed-product-submit {
+        background: var(--dark-green);
+        color: var(--gold);
+      }
+
+      .fixed-product-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
       /* Update Notice Popup */
       .update-notice-overlay {
         position: fixed;
@@ -379,8 +513,14 @@
       }
 
       @keyframes slideUpNotice {
-        from { transform: translateY(100%); opacity: 0; }
-        to   { transform: translateY(0);   opacity: 1; }
+        from {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
       }
 
       .update-notice-icon {
@@ -591,9 +731,15 @@
       }
 
       @keyframes searchFlash {
-        0%   { background: #fff8e1; }
-        30%  { background: #ffeaa0; }
-        100% { background: transparent; }
+        0% {
+          background: #fff8e1;
+        }
+        30% {
+          background: #ffeaa0;
+        }
+        100% {
+          background: transparent;
+        }
       }
 
       /* Quick Buttons */
@@ -1189,15 +1335,22 @@
         <div class="search-section">
           <div class="search-label">
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <circle cx="11" cy="11" r="8" stroke-width="2"/>
-              <path d="M21 21l-4.35-4.35" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="11" cy="11" r="8" stroke-width="2" />
+              <path d="M21 21l-4.35-4.35" stroke-width="2" stroke-linecap="round" />
             </svg>
             חיפוש מוצר
           </div>
           <div class="search-input-wrapper">
-            <svg class="search-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <circle cx="11" cy="11" r="8" stroke-width="2"/>
-              <path d="M21 21l-4.35-4.35" stroke-width="2" stroke-linecap="round"/>
+            <svg
+              class="search-icon"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <circle cx="11" cy="11" r="8" stroke-width="2" />
+              <path d="M21 21l-4.35-4.35" stroke-width="2" stroke-linecap="round" />
             </svg>
             <input
               type="search"
@@ -1210,15 +1363,79 @@
               spellcheck="false"
               oninput="handleSearchInput()"
             />
-            <button type="button" class="search-clear-btn" id="searchClearBtn" onclick="clearSearch()">✕</button>
+            <button
+              type="button"
+              class="search-clear-btn"
+              id="searchClearBtn"
+              onclick="clearSearch()"
+            >
+              ✕
+            </button>
           </div>
           <div class="search-results" id="searchResults"></div>
+        </div>
+
+        <!-- Add Permanent Product ("מוצר קבוע") -->
+        <div class="add-fixed-product-section">
+          <button type="button" class="add-fixed-product-btn" onclick="openAddFixedProductModal()">
+            <span>➕</span>
+            הוסף מוצר קבוע חדש
+          </button>
         </div>
 
         <!-- Categories Container -->
         <div id="categoriesContainer"></div>
       </form>
     </main>
+
+    <!-- Add Fixed Product Modal -->
+    <div class="fixed-product-overlay" id="fixedProductOverlay">
+      <div class="fixed-product-box">
+        <div class="fixed-product-title">הוספת מוצר קבוע</div>
+        <div class="fixed-product-subtitle">
+          המוצר ייכנס לתוקף מהיום ואילך (כל הימים הנותרים בחודש), וישמר גם בחודשים הבאים — ללא צורך
+          בעדכון ידני.
+        </div>
+
+        <div class="input-group">
+          <label for="fixedProductName">שם המוצר *</label>
+          <input
+            type="text"
+            id="fixedProductName"
+            placeholder="לדוגמה: קרואסון וניל"
+            maxlength="60"
+          />
+        </div>
+
+        <div class="input-group">
+          <label for="fixedProductCategory">קטגוריה *</label>
+          <select id="fixedProductCategory">
+            <option value="">בחר קטגוריה...</option>
+            <option value="מאפים מתוקים">מאפים מתוקים</option>
+            <option value="מלוחים">מלוחים</option>
+            <option value="עוגות שלמות">עוגות שלמות</option>
+            <option value="קינוחי ויטרינה">קינוחי ויטרינה</option>
+            <option value="מוצרים שונים">מוצרים שונים</option>
+          </select>
+        </div>
+
+        <div class="fixed-product-msg" id="fixedProductMsg"></div>
+
+        <div class="fixed-product-btns">
+          <button type="button" class="fixed-product-cancel" onclick="closeAddFixedProductModal()">
+            ביטול
+          </button>
+          <button
+            type="button"
+            class="fixed-product-submit"
+            id="fixedProductSubmitBtn"
+            onclick="submitAddFixedProduct()"
+          >
+            הוסף מוצר
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Submit Section -->
     <div class="submit-section">
@@ -2240,7 +2457,157 @@
         document.getElementById('updateNoticeOverlay').classList.add('hidden');
       }
 
-      function initializeApp() {
+      // ------------------------------------------------------------------
+      // Permanent products ("מוצר קבוע") — dynamic loading + add flow
+      // ------------------------------------------------------------------
+
+      const CATEGORY_NAME_TO_KEY = {};
+      Object.entries(CATEGORIES).forEach(([key, data]) => {
+        CATEGORY_NAME_TO_KEY[data.name] = key;
+      });
+
+      // Fetches the full product list from the backend (base catalog +
+      // every permanently-registered "מוצר קבוע") and merges any product
+      // not already known locally into CATEGORIES/PRODUCT_KEYS, so
+      // permanently-added products show up automatically — with zero code
+      // deploys — on every future page load.
+      async function loadFixedProductsFromServer() {
+        try {
+          const url = `${CONFIG.API_URL}?action=get_products_list`;
+          const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+          if (!response.ok) return;
+
+          const result = await response.json();
+          if (!result.success || !Array.isArray(result.products)) return;
+
+          result.products.forEach((p) => {
+            if (!p.isFixedCustom) return; // base catalog is already hardcoded locally
+            if (PRODUCT_KEYS[p.name]) return; // already known locally
+
+            const categoryKey = CATEGORY_NAME_TO_KEY[p.category];
+            if (!categoryKey || !CATEGORIES[categoryKey]) return; // unknown category, skip defensively
+
+            CATEGORIES[categoryKey].products.push({ key: p.key, name: p.name });
+            PRODUCT_KEYS[p.name] = p.key;
+          });
+        } catch (err) {
+          console.warn('Could not load permanent products from server:', err);
+          // Non-fatal: the form still works with the locally-known product list.
+        }
+      }
+
+      function openAddFixedProductModal() {
+        document.getElementById('fixedProductName').value = '';
+        document.getElementById('fixedProductCategory').value = '';
+        setFixedProductMsg('', '');
+        setFixedProductSubmitEnabled(true);
+        document.getElementById('fixedProductOverlay').classList.add('show');
+      }
+
+      function closeAddFixedProductModal() {
+        document.getElementById('fixedProductOverlay').classList.remove('show');
+      }
+
+      function setFixedProductMsg(text, type) {
+        const el = document.getElementById('fixedProductMsg');
+        el.textContent = text;
+        el.className = 'fixed-product-msg' + (type ? ' ' + type : '');
+      }
+
+      function setFixedProductSubmitEnabled(enabled) {
+        const btn = document.getElementById('fixedProductSubmitBtn');
+        btn.disabled = !enabled;
+        btn.textContent = enabled ? 'הוסף מוצר' : 'מוסיף...';
+      }
+
+      async function submitAddFixedProduct() {
+        const nameInput = document.getElementById('fixedProductName');
+        const categorySelect = document.getElementById('fixedProductCategory');
+        const name = nameInput.value.replace(/\s+/g, ' ').trim();
+        const category = categorySelect.value;
+
+        if (!name) {
+          setFixedProductMsg('יש להזין שם מוצר.', 'error');
+          nameInput.focus();
+          return;
+        }
+        if (!category) {
+          setFixedProductMsg('יש לבחור קטגוריה.', 'error');
+          categorySelect.focus();
+          return;
+        }
+
+        setFixedProductSubmitEnabled(false);
+        setFixedProductMsg('שולח...', '');
+
+        try {
+          const url =
+            `${CONFIG.API_URL}?action=add_fixed_product` +
+            `&name=${encodeURIComponent(name)}` +
+            `&category=${encodeURIComponent(category)}`;
+
+          const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+          const result = await response.json();
+
+          if (!result.success) {
+            setFixedProductMsg(result.error || 'אירעה שגיאה בהוספת המוצר.', 'error');
+            setFixedProductSubmitEnabled(true);
+            return;
+          }
+
+          addFixedProductToCurrentForm(result.product);
+
+          setFixedProductMsg(`✓ "${result.product.name}" נוסף בהצלחה!`, 'success');
+          setTimeout(closeAddFixedProductModal, 1400);
+        } catch (err) {
+          console.error('Error adding fixed product:', err);
+          setFixedProductMsg('שגיאת תקשורת. נסה שוב.', 'error');
+          setFixedProductSubmitEnabled(true);
+        }
+      }
+
+      // Injects the newly-added product into the already-rendered form
+      // WITHOUT re-rendering anything else, so no in-progress quantities
+      // entered elsewhere on the form are ever touched.
+      function addFixedProductToCurrentForm(product) {
+        const categoryKey = CATEGORY_NAME_TO_KEY[product.category];
+        if (!categoryKey || !CATEGORIES[categoryKey]) return;
+
+        const alreadyKnown = CATEGORIES[categoryKey].products.some(
+          (p) => (typeof p === 'object' ? p.key : PRODUCT_KEYS[p]) === product.key
+        );
+        if (!alreadyKnown) {
+          CATEGORIES[categoryKey].products.push({ key: product.key, name: product.name });
+        }
+        PRODUCT_KEYS[product.name] = product.key;
+
+        const body = document.querySelector(`#${categoryKey}-content .category-body`);
+        if (body && !document.getElementById(`${product.key}_qty`)) {
+          body.insertAdjacentHTML(
+            'beforeend',
+            renderProduct({ key: product.key, name: product.name }, categoryKey)
+          );
+
+          const countEl = document.querySelector(
+            `[data-category="${categoryKey}"] .category-count`
+          );
+          if (countEl) countEl.textContent = CATEGORIES[categoryKey].products.length;
+        }
+
+        buildSearchIndex();
+
+        // Open the category and scroll to the new product so it's obvious it was added
+        const content = document.getElementById(`${categoryKey}-content`);
+        const header = document.querySelector(`[data-category="${categoryKey}"]`);
+        if (content && !content.classList.contains('active')) {
+          content.classList.add('active');
+          if (header) header.classList.add('active');
+        }
+      }
+
+      async function initializeApp() {
+        await loadFixedProductsFromServer();
+
         const container = document.getElementById('categoriesContainer');
         let html = '';
 
@@ -2292,6 +2659,9 @@
       window.openReview = openReview;
       window.closeReview = closeReview;
       window.confirmAndSubmit = confirmAndSubmit;
+      window.openAddFixedProductModal = openAddFixedProductModal;
+      window.closeAddFixedProductModal = closeAddFixedProductModal;
+      window.submitAddFixedProduct = submitAddFixedProduct;
 
       // Start
       if (document.readyState === 'loading') {

@@ -15,9 +15,9 @@ const MAX_EMAIL_RETRIES = 3;
 const EMAIL_RETRY_DELAY = 1000;
 
 // Sheet structure constants
-const CUSTOM_PRODUCTS_START_ROW = 89; // Row 88 is last regular product, 89+ for אחרים
+const CUSTOM_PRODUCTS_START_ROW = 88; // Row 87 is last regular product, 88+ for אחרים
 const SUMMARY_SHEET_NAME = 'סיכום חודש';
-const SUMMARY_CUSTOM_START_ROW = 89; // Custom products start at row 89 in summary
+const SUMMARY_CUSTOM_START_ROW = 88; // Custom products start at row 88 in summary
 
 // Column definitions
 const COLUMNS = {
@@ -120,8 +120,71 @@ function onOpen() {
     .addItem('⚙️ עדכון מבנה מוצרים בכל הגיליונות', 'updateAllSheetsStructure')
     .addItem('🗑️ מחיקת גיליונות שגויים (1-9)', 'removeIncorrectlyNamedSheets')
     .addSeparator()
+    .addItem('🧹 ניקוי שורות כפולות בכל הגיליונות (חד פעמי)', 'runCleanupDuplicatesOnAllSheets')
+    .addSeparator()
     .addItem('ℹ️ בדיקת מצב מערכת', 'checkCurrentMode')
     .addToUi();
+}
+
+function runCleanupDuplicatesOnAllSheets() {
+  const ui = SpreadsheetApp.getUi();
+
+  const confirm = ui.alert(
+    'ניקוי שורות כפולות',
+    'פעולה זו תסרוק את כל גיליונות 01–31 ותמחק שמות מוצרים שיושבים בשורה שגויה (לא תואמת את מפת המוצרים).\n\n' +
+    '⚠️ היא לא תמחק כמויות — רק שמות מוצרים בשורות שגויות.\n\n' +
+    'מומלץ להריץ פעם אחת לאחר תיקון ידני של הגיליון.\n\nלהמשיך?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (confirm !== ui.Button.YES) return;
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sortedEntries = Object.entries(PRODUCT_ROW_MAP).sort((a, b) => a[1].row - b[1].row);
+  const maxRow = sortedEntries[sortedEntries.length - 1][1].row;
+
+  // Build: productName → correct row per PRODUCT_ROW_MAP
+  const correctRow = {};
+  Object.values(PRODUCT_ROW_MAP).forEach(info => { correctRow[info.name] = info.row; });
+
+  let totalCleared = 0;
+  const sheetsReport = [];
+
+  for (let day = 1; day <= 31; day++) {
+    const sheetName = day < 10 ? '0' + day : day.toString();
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) continue;
+
+    const allData = sheet.getRange(2, 1, maxRow - 1, 4).getValues();
+    const rowsToClear = [];
+
+    allData.forEach((row, idx) => {
+      const name = String(row[0]).trim();
+      const actualRow = idx + 2;
+      if (name && correctRow[name] !== undefined && correctRow[name] !== actualRow) {
+        rowsToClear.push(actualRow);
+      }
+    });
+
+    if (rowsToClear.length > 0) {
+      rowsToClear.forEach(r => {
+        sheet.getRange(r, 1, 1, 5).clearContent();
+        sheet.getRange(r, 1, 1, 5).setBackground(null);
+      });
+      totalCleared += rowsToClear.length;
+      sheetsReport.push(sheetName + ': ' + rowsToClear.length + ' שורות');
+    }
+
+    if (day % 5 === 0) SpreadsheetApp.flush();
+  }
+
+  SpreadsheetApp.flush();
+
+  const summary = totalCleared === 0
+    ? 'לא נמצאו שורות כפולות — הגיליונות תקינים.'
+    : `נוקו ${totalCleared} שורות כפולות:\n` + sheetsReport.join('\n');
+
+  ui.alert('ניקוי הושלם', summary, ui.ButtonSet.OK);
 }
 
 function manualUpdateSummarySheet() {
@@ -682,49 +745,67 @@ function getDeliveryData(sheet, submissionId) {
   };
 }
 
+// Reads column A of the sheet once and returns { productName: sheetRow }.
+// First occurrence of each name wins — so if old corruption left a duplicate
+// name at a wrong row, the original (earlier) row is used and the duplicate
+// is silently ignored.
+function buildNameToRowIndex(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return {};
+  const col = sheet.getRange(2, COLUMNS.PRODUCT_NAME, lastRow - 1, 1).getValues();
+  const index = {};
+  col.forEach(function(row, i) {
+    const name = String(row[0]).trim();
+    if (name && !index[name]) index[name] = i + 2;
+  });
+  return index;
+}
+
+// Build nameToKey reverse-lookup from PRODUCT_ROW_MAP (used in read functions)
+function buildNameToKeyIndex() {
+  const nameToKey = {};
+  Object.entries(PRODUCT_ROW_MAP).forEach(function([key, info]) {
+    nameToKey[info.name] = key;
+  });
+  return nameToKey;
+}
+
 function getProductsFromSheet(sheet) {
   const products = [];
-  const lastProductRow = Math.max(...Object.values(PRODUCT_ROW_MAP).map(p => p.row));
-  const productData = sheet.getRange(2, 1, lastProductRow - 1, 5).getValues();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return products;
 
-  const rowToKey = {};
-  Object.entries(PRODUCT_ROW_MAP).forEach(([key, info]) => {
-    rowToKey[info.row] = key;
-  });
+  const nameToKey = buildNameToKeyIndex();
+  const data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+  const seenKeys = new Set();
 
-  productData.forEach((row, index) => {
-    const [name, category, quantity, notes, lastUpdated] = row;
-    const actualRow = index + 2;
-    const key = rowToKey[actualRow];
+  data.forEach(function(row, idx) {
+    const name = String(row[0]).trim();
+    const category = row[1];
+    const quantity = parseInt(row[2]) || 0;
+    const notes = row[3] || '';
+    const actualRow = idx + 2;
 
-    if (quantity > 0 && key) {
+    if (!name || quantity === 0) return;
+
+    const key = nameToKey[name];
+    if (key) {
+      // Regular product — skip if we already counted it (duplicate row)
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        products.push({ key: key, name: name, category: category, quantity: quantity, notes: notes });
+      }
+    } else if (actualRow >= CUSTOM_PRODUCTS_START_ROW) {
+      // Custom (אחרים) product
       products.push({
-        key: key,
+        key: 'custom_' + idx,
         name: name,
-        category: category,
+        category: String(category).trim() || 'אחרים',
         quantity: quantity,
-        notes: notes || ''
+        notes: notes
       });
     }
   });
-
-  const lastRow = sheet.getLastRow();
-  if (lastRow >= CUSTOM_PRODUCTS_START_ROW) {
-    const customData = sheet.getRange(CUSTOM_PRODUCTS_START_ROW, 1, lastRow - CUSTOM_PRODUCTS_START_ROW + 1, 4).getValues();
-
-    customData.forEach((row, index) => {
-      const [name, category, quantity, notes] = row;
-      if (name && quantity > 0) {
-        products.push({
-          key: `custom_${index}`,
-          name: name,
-          category: category || 'אחרים',
-          quantity: quantity,
-          notes: notes || ''
-        });
-      }
-    });
-  }
 
   Logger.log('Retrieved ' + products.length + ' products from sheet');
   return products;
@@ -732,43 +813,28 @@ function getProductsFromSheet(sheet) {
 
 function getOriginalQuantities(sheet) {
   const originalQuantities = {};
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return originalQuantities;
 
-  const lastProductRow = Math.max(...Object.values(PRODUCT_ROW_MAP).map(p => p.row));
-  const productData = sheet.getRange(2, 1, lastProductRow - 1, 3).getValues();
+  const nameToKey = buildNameToKeyIndex();
+  const data = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+  const seenKeys = new Set();
 
-  const rowToKey = {};
-  Object.entries(PRODUCT_ROW_MAP).forEach(([key, info]) => {
-    rowToKey[info.row] = key;
-  });
+  data.forEach(function(row, idx) {
+    const name = String(row[0]).trim();
+    const quantity = parseInt(row[2]) || 0;
+    const actualRow = idx + 2;
 
-  productData.forEach((row, index) => {
-    const [name, category, quantity] = row;
-    const actualRow = index + 2;
-    const key = rowToKey[actualRow];
+    if (!name || quantity === 0) return;
 
-    if (key && quantity > 0) {
-      originalQuantities[key] = {
-        name: name,
-        quantity: parseInt(quantity) || 0
-      };
+    const key = nameToKey[name];
+    if (key && !seenKeys.has(key)) {
+      seenKeys.add(key);
+      originalQuantities[key] = { name: name, quantity: quantity };
+    } else if (!key && actualRow >= CUSTOM_PRODUCTS_START_ROW) {
+      originalQuantities['custom_' + name] = { name: name, quantity: quantity };
     }
   });
-
-  const lastRow = sheet.getLastRow();
-  if (lastRow >= CUSTOM_PRODUCTS_START_ROW) {
-    const customData = sheet.getRange(CUSTOM_PRODUCTS_START_ROW, 1, lastRow - CUSTOM_PRODUCTS_START_ROW + 1, 3).getValues();
-
-    customData.forEach((row, index) => {
-      const [name, category, quantity] = row;
-      if (name && quantity > 0) {
-        const key = `custom_${name}`;
-        originalQuantities[key] = {
-          name: name,
-          quantity: parseInt(quantity) || 0
-        };
-      }
-    });
-  }
 
   return originalQuantities;
 }
@@ -776,6 +842,41 @@ function getOriginalQuantities(sheet) {
 // ============================================================================
 // DATA UPDATE
 // ============================================================================
+
+/**
+ * Scans rows 2–88 and clears any row where a known product name sits at a row
+ * that disagrees with PRODUCT_ROW_MAP. This fixes structural corruption left by
+ * the earlier addNewProductsToAllSheets() run without touching correct rows.
+ */
+function cleanupMisplacedProductRows(sheet) {
+  const sortedEntries = Object.entries(PRODUCT_ROW_MAP).sort((a, b) => a[1].row - b[1].row);
+  const maxRow = sortedEntries[sortedEntries.length - 1][1].row;
+
+  // One batch read of all product rows
+  const allData = sheet.getRange(2, 1, maxRow - 1, 4).getValues();
+
+  // Build correct-row lookup: productName → expected row per PRODUCT_ROW_MAP
+  const correctRow = {};
+  Object.values(PRODUCT_ROW_MAP).forEach(info => { correctRow[info.name] = info.row; });
+
+  const rowsToClear = [];
+  allData.forEach((row, idx) => {
+    const name = String(row[0]).trim();
+    const actualRow = idx + 2;
+    if (name && correctRow[name] !== undefined && correctRow[name] !== actualRow) {
+      rowsToClear.push(actualRow);
+    }
+  });
+
+  if (rowsToClear.length > 0) {
+    Logger.log('cleanupMisplacedProductRows: clearing rows ' + rowsToClear.join(', '));
+    rowsToClear.forEach(r => {
+      sheet.getRange(r, 1, 1, 5).clearContent();
+      sheet.getRange(r, 1, 1, 5).setBackground(null);
+    });
+    SpreadsheetApp.flush();
+  }
+}
 
 function updateDeliveryData(sheet, data, submissionTime) {
   if (!data.products || !Array.isArray(data.products)) {
@@ -813,46 +914,57 @@ function updateDeliveryData(sheet, data, submissionTime) {
   const regularProducts = data.products.filter(p => !p.key.startsWith('custom_'));
   const customProducts = data.products.filter(p => p.key.startsWith('custom_'));
 
+  // Build a name→actualRow index from the sheet once — this makes writes
+  // resilient to row-number mismatches: we always write to the row where
+  // the product name actually lives, not to a hardcoded position.
+  const nameToRow = buildNameToRowIndex(sheet);
+
   Logger.log('Processing ' + regularProducts.length + ' regular products');
-  regularProducts.forEach(product => {
+  regularProducts.forEach(function(product) {
     const productInfo = PRODUCT_ROW_MAP[product.key];
+    if (!productInfo) return;
 
-    if (productInfo) {
-      const row = productInfo.row;
-      const currentQuantity = parseInt(sheet.getRange(row, COLUMNS.QUANTITY).getValue()) || 0;
-      const newQuantity = parseInt(product.quantity) || 0;
-      const updatedQuantity = currentQuantity + newQuantity;
+    const row = nameToRow[productInfo.name];
+    if (!row || row >= CUSTOM_PRODUCTS_START_ROW) {
+      Logger.log('Product not found in sheet column A: ' + productInfo.name + ' (key: ' + product.key + ')');
+      return;
+    }
 
-      const currentNotes = sheet.getRange(row, COLUMNS.NOTES).getValue() || '';
-      const newNotes = product.notes || '';
-      let finalNotes = currentNotes && newNotes ? currentNotes + ' | ' + newNotes : currentNotes || newNotes;
+    const currentQuantity = parseInt(sheet.getRange(row, COLUMNS.QUANTITY).getValue()) || 0;
+    const newQuantity = parseInt(product.quantity) || 0;
+    const updatedQuantity = currentQuantity + newQuantity;
 
-      const rowData = [productInfo.name, productInfo.category, updatedQuantity, finalNotes];
-      sheet.getRange(row, COLUMNS.PRODUCT_NAME, 1, 4).setValues([rowData]);
+    const currentNotes = sheet.getRange(row, COLUMNS.NOTES).getValue() || '';
+    const newNotes = product.notes || '';
+    const finalNotes = currentNotes && newNotes ? currentNotes + ' | ' + newNotes : currentNotes || newNotes;
 
-      if (updatedQuantity > 0) {
-        sheet.getRange(row, COLUMNS.PRODUCT_NAME, 1, 5).setBackground('#FFF2CC');
-        sheet.getRange(row, COLUMNS.QUANTITY).setFontWeight('bold');
-      }
+    sheet.getRange(row, COLUMNS.QUANTITY).setValue(updatedQuantity);
+    sheet.getRange(row, COLUMNS.NOTES).setValue(finalNotes);
+
+    if (updatedQuantity > 0) {
+      sheet.getRange(row, COLUMNS.PRODUCT_NAME, 1, 5).setBackground('#FFF2CC');
+      sheet.getRange(row, COLUMNS.QUANTITY).setFontWeight('bold');
     }
   });
 
   if (customProducts.length > 0) {
     Logger.log('Processing ' + customProducts.length + ' custom products');
 
-    let lastRow = Math.max(sheet.getLastRow(), CUSTOM_PRODUCTS_START_ROW - 1);
+    // Batch-read custom range once to avoid per-row API calls
+    let customLastRow = Math.max(sheet.getLastRow(), CUSTOM_PRODUCTS_START_ROW - 1);
+    const customNameToRow = {};
+    if (customLastRow >= CUSTOM_PRODUCTS_START_ROW) {
+      const customCount = customLastRow - CUSTOM_PRODUCTS_START_ROW + 1;
+      const customNames = sheet.getRange(CUSTOM_PRODUCTS_START_ROW, COLUMNS.PRODUCT_NAME, customCount, 1).getValues();
+      customNames.forEach(function(row, i) {
+        const name = String(row[0]).trim();
+        if (name && !customNameToRow[name]) customNameToRow[name] = CUSTOM_PRODUCTS_START_ROW + i;
+      });
+    }
 
-    customProducts.forEach(product => {
+    customProducts.forEach(function(product) {
       const productName = product.name;
-      let foundRow = null;
-
-      for (let row = CUSTOM_PRODUCTS_START_ROW; row <= lastRow; row++) {
-        const existingName = sheet.getRange(row, COLUMNS.PRODUCT_NAME).getValue();
-        if (existingName === productName) {
-          foundRow = row;
-          break;
-        }
-      }
+      const foundRow = customNameToRow[productName] || null;
 
       if (foundRow) {
         const currentQuantity = parseInt(sheet.getRange(foundRow, COLUMNS.QUANTITY).getValue()) || 0;
@@ -861,25 +973,21 @@ function updateDeliveryData(sheet, data, submissionTime) {
 
         const currentNotes = sheet.getRange(foundRow, COLUMNS.NOTES).getValue() || '';
         const newNotes = product.notes || '';
-        let finalNotes = currentNotes && newNotes ? currentNotes + ' | ' + newNotes : currentNotes || newNotes;
+        const finalNotes = currentNotes && newNotes ? currentNotes + ' | ' + newNotes : currentNotes || newNotes;
 
-        const rowData = [productName, 'אחרים', updatedQuantity, finalNotes];
-        sheet.getRange(foundRow, COLUMNS.PRODUCT_NAME, 1, 4).setValues([rowData]);
-
+        sheet.getRange(foundRow, COLUMNS.PRODUCT_NAME, 1, 4).setValues([[productName, 'אחרים', updatedQuantity, finalNotes]]);
         if (updatedQuantity > 0) {
           sheet.getRange(foundRow, COLUMNS.PRODUCT_NAME, 1, 5).setBackground('#FFE6CC');
           sheet.getRange(foundRow, COLUMNS.QUANTITY).setFontWeight('bold');
         }
       } else {
-        const newRow = lastRow + 1;
-        lastRow = newRow;
+        customLastRow++;
+        customNameToRow[productName] = customLastRow;
         const quantity = parseInt(product.quantity) || 0;
-        const rowData = [productName, 'אחרים', quantity, product.notes || ''];
-        sheet.getRange(newRow, COLUMNS.PRODUCT_NAME, 1, 4).setValues([rowData]);
-
+        sheet.getRange(customLastRow, COLUMNS.PRODUCT_NAME, 1, 4).setValues([[productName, 'אחרים', quantity, product.notes || '']]);
         if (quantity > 0) {
-          sheet.getRange(newRow, COLUMNS.PRODUCT_NAME, 1, 5).setBackground('#FFE6CC');
-          sheet.getRange(newRow, COLUMNS.QUANTITY).setFontWeight('bold');
+          sheet.getRange(customLastRow, COLUMNS.PRODUCT_NAME, 1, 5).setBackground('#FFE6CC');
+          sheet.getRange(customLastRow, COLUMNS.QUANTITY).setFontWeight('bold');
         }
       }
     });
@@ -930,21 +1038,24 @@ function processConfirmation(sheet, confirmedProducts, fullConfirmation, submiss
 
     Logger.log('Processing ' + confirmedProducts.length + ' confirmed products with potential changes');
 
-    confirmedProducts.forEach(product => {
+    // Build name→row index once for all writes in this confirmation
+    const nameToRow = buildNameToRowIndex(sheet);
+
+    confirmedProducts.forEach(function(product) {
       const confirmedQuantity = parseInt(product.quantity) || 0;
 
       let comparisonKey = product.key;
       if (product.key.startsWith('custom_')) {
-        comparisonKey = `custom_${product.name}`;
+        comparisonKey = 'custom_' + product.name;
       }
 
       const originalData = originalQuantities[comparisonKey];
       const originalQuantity = originalData ? originalData.quantity : 0;
 
-      Logger.log(`Product: ${product.name}, Original: ${originalQuantity}, Confirmed: ${confirmedQuantity}`);
+      Logger.log('Product: ' + product.name + ', Original: ' + originalQuantity + ', Confirmed: ' + confirmedQuantity);
 
       if (originalQuantity !== confirmedQuantity) {
-        Logger.log(`CHANGE DETECTED: ${product.name} changed from ${originalQuantity} to ${confirmedQuantity}`);
+        Logger.log('CHANGE DETECTED: ' + product.name + ' changed from ' + originalQuantity + ' to ' + confirmedQuantity);
 
         changedProducts.push({
           key: product.key,
@@ -959,23 +1070,27 @@ function processConfirmation(sheet, confirmedProducts, fullConfirmation, submiss
         } else {
           const productInfo = PRODUCT_ROW_MAP[product.key];
           if (productInfo) {
-            const row = productInfo.row;
+            // Use name-based row lookup — same pattern as updateDeliveryData
+            const row = nameToRow[productInfo.name];
+            if (!row || row >= CUSTOM_PRODUCTS_START_ROW) {
+              Logger.log('Confirmation: product not found in sheet: ' + productInfo.name);
+            } else {
+              sheet.getRange(row, COLUMNS.QUANTITY).setValue(confirmedQuantity);
 
-            sheet.getRange(row, COLUMNS.QUANTITY).setValue(confirmedQuantity);
+              const currentNotes = sheet.getRange(row, COLUMNS.NOTES).getValue() || '';
+              const changeNote = 'לפני שינוי: ' + originalQuantity + ', לאחר שינוי: ' + confirmedQuantity;
+              const finalNotes = currentNotes ? currentNotes + ' | ' + changeNote : changeNote;
+              sheet.getRange(row, COLUMNS.NOTES).setValue(finalNotes);
+              sheet.getRange(row, COLUMNS.LAST_UPDATED).setValue(currentTime);
 
-            const currentNotes = sheet.getRange(row, COLUMNS.NOTES).getValue() || '';
-            const changeNote = `לפני שינוי: ${originalQuantity}, לאחר שינוי: ${confirmedQuantity}`;
-            const finalNotes = currentNotes ? currentNotes + ' | ' + changeNote : changeNote;
-            sheet.getRange(row, COLUMNS.NOTES).setValue(finalNotes);
-            sheet.getRange(row, COLUMNS.LAST_UPDATED).setValue(currentTime);
-
-            if (confirmedQuantity > 0) {
-              sheet.getRange(row, 1, 1, 5).setBackground('#fff3cd');
+              if (confirmedQuantity > 0) {
+                sheet.getRange(row, 1, 1, 5).setBackground('#fff3cd');
+              }
             }
           }
         }
       } else {
-        Logger.log(`NO CHANGE: ${product.name} remains at ${originalQuantity}`);
+        Logger.log('NO CHANGE: ' + product.name + ' remains at ' + originalQuantity);
       }
     });
 
@@ -1646,86 +1761,86 @@ const PRODUCT_ROW_MAP = {
   'sweet_brioche_sugar': { row: 18, name: 'בריוש סוכרה', category: 'מאפים מתוקים', price: 0 },
   'sweet_brownies_hazelnut': { row: 19, name: 'מאפה בראוניז לוז', category: 'מאפים מתוקים', price: 0 },
 
-  // Salty - מלוחים (rows 20-34)
+  // Salty - מלוחים (rows 20-33)
   'salty_empty_bun': { row: 20, name: 'לחמניה ריקה', category: 'מלוחים', price: 0 },
   'salty_empty_bagel': { row: 21, name: 'בייגל ריק', category: 'מלוחים', price: 0 },
-  'salty_empty_poppy_bun': { row: 22, name: 'לחמנית פרג ריקה', category: 'מלוחים', price: 0 },
-  'salty_empty_cheese_bourekas': { row: 23, name: 'בורקס גבינה ריק', category: 'מלוחים', price: 0 },
-  'salty_rectangle_pastry': { row: 24, name: 'מאפה מלוח (מלבן)', category: 'מלוחים', price: 0 },
-  'salty_focaccia_squares': { row: 25, name: "ריבועי פוקאצ'ה", category: 'מלוחים', price: 0 },
-  'salty_personal_focaccia': { row: 26, name: "פוקאצ'ה אישית", category: 'מלוחים', price: 0 },
-  'salty_quiche_10': { row: 27, name: 'קיש ק.10', category: 'מלוחים', price: 0 },
-  'salty_bagelson': { row: 28, name: 'בייגלסון', category: 'מלוחים', price: 0 },
-  'salty_brioche_challah': { row: 29, name: 'חלות בריוש', category: 'מלוחים', price: 0 },
-  'salty_bread_loaf': { row: 30, name: 'כיכר לחם', category: 'מלוחים', price: 0 },
-  'salty_cheese_saviach': { row: 31, name: 'מאפה גבינות וסביח', category: 'מלוחים', price: 38 },
-  'salty_cheese_spinach': { row: 32, name: 'מאפה גבינה ותרד', category: 'מלוחים', price: 32 },
-  'salty_poppy_bun': { row: 33, name: 'לחמניית פרג', category: 'מלוחים', price: 0 },
-  'salty_pretzel': { row: 34, name: 'פרעצל', category: 'מלוחים', price: 0 },
+  // salty_empty_poppy_bun removed — not present in actual spreadsheet (was row 22)
+  'salty_empty_cheese_bourekas': { row: 22, name: 'בורקס גבינה ריק', category: 'מלוחים', price: 0 },
+  'salty_rectangle_pastry': { row: 23, name: 'מאפה מלוח (מלבן)', category: 'מלוחים', price: 0 },
+  'salty_focaccia_squares': { row: 24, name: "ריבועי פוקאצ'ה", category: 'מלוחים', price: 0 },
+  'salty_personal_focaccia': { row: 25, name: "פוקאצ'ה אישית", category: 'מלוחים', price: 0 },
+  'salty_quiche_10': { row: 26, name: 'קיש ק.10', category: 'מלוחים', price: 0 },
+  'salty_bagelson': { row: 27, name: 'בייגלסון', category: 'מלוחים', price: 0 },
+  'salty_brioche_challah': { row: 28, name: 'חלות בריוש', category: 'מלוחים', price: 0 },
+  'salty_bread_loaf': { row: 29, name: 'כיכר לחם', category: 'מלוחים', price: 0 },
+  'salty_cheese_saviach': { row: 30, name: 'מאפה גבינות וסביח', category: 'מלוחים', price: 38 },
+  'salty_cheese_spinach': { row: 31, name: 'מאפה גבינה ותרד', category: 'מלוחים', price: 32 },
+  'salty_poppy_bun': { row: 32, name: 'לחמניית פרג', category: 'מלוחים', price: 0 },
+  'salty_pretzel': { row: 33, name: 'פרעצל', category: 'מלוחים', price: 0 },
 
-  // Sandwiches - כריכים (rows 35-42)
-  'sandwiches_beet_sourdough': { row: 35, name: 'מחמצת סלק', category: 'כריכים', price: 0 },
-  'sandwiches_eggplant_sourdough': { row: 36, name: 'מחמצת חצילים', category: 'כריכים', price: 0 },
-  'sandwiches_brioche_poppy_camembert': { row: 37, name: 'בריוש פרג קממבר', category: 'כריכים', price: 0 },
-  'sandwiches_bourekas_cheeses': { row: 38, name: 'כריך בורקס גבינות', category: 'כריכים', price: 0 },
-  'sandwiches_croissant_butter': { row: 39, name: 'כריך קרואסון חמאה', category: 'כריכים', price: 0 },
-  'sandwiches_bagel': { row: 40, name: 'כריך בייגל', category: 'כריכים', price: 0 },
-  'sandwiches_focaccia': { row: 41, name: "כריך פוקאצ'ה", category: 'כריכים', price: 0 },
-  'sandwiches_scrambled_bun': { row: 42, name: 'לחמניה מקושקשת', category: 'כריכים', price: 0 },
+  // Sandwiches - כריכים (rows 34-41)
+  'sandwiches_beet_sourdough': { row: 34, name: 'מחמצת סלק', category: 'כריכים', price: 0 },
+  'sandwiches_eggplant_sourdough': { row: 35, name: 'מחמצת חצילים', category: 'כריכים', price: 0 },
+  'sandwiches_brioche_poppy_camembert': { row: 36, name: 'בריוש פרג קממבר', category: 'כריכים', price: 0 },
+  'sandwiches_bourekas_cheeses': { row: 37, name: 'כריך בורקס גבינות', category: 'כריכים', price: 0 },
+  'sandwiches_croissant_butter': { row: 38, name: 'כריך קרואסון חמאה', category: 'כריכים', price: 0 },
+  'sandwiches_bagel': { row: 39, name: 'כריך בייגל', category: 'כריכים', price: 0 },
+  'sandwiches_focaccia': { row: 40, name: "כריך פוקאצ'ה", category: 'כריכים', price: 0 },
+  'sandwiches_scrambled_bun': { row: 41, name: 'לחמניה מקושקשת', category: 'כריכים', price: 0 },
 
-  // Shelf products - מוצרי מדף (rows 43-45)
-  'shelf_yeast_cake': { row: 43, name: 'עוגת שמרים', category: 'מוצרי מדף', price: 0 },
-  'shelf_challah': { row: 44, name: 'חלות', category: 'מוצרי מדף', price: 0 },
-  'shelf_thick': { row: 45, name: 'בחושות', category: 'מוצרי מדף', price: 0 },
+  // Shelf products - מוצרי מדף (rows 42-44)
+  'shelf_yeast_cake': { row: 42, name: 'עוגת שמרים', category: 'מוצרי מדף', price: 0 },
+  'shelf_challah': { row: 43, name: 'חלות', category: 'מוצרי מדף', price: 0 },
+  'shelf_thick': { row: 44, name: 'בחושות', category: 'מוצרי מדף', price: 0 },
 
-  // Whole cakes - עוגות שלמות (rows 46-56)
-  'whole_cakes_fudge_mascarpone_strip': { row: 46, name: "פס פאדג' מסקרפונה", category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_rusha_hazelnut_strip': { row: 47, name: 'פס רושה אגוזי לוז', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_mango_passionfruit_strip': { row: 48, name: 'פס מנגו פסיפלורה', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_coffee_pecan_strip': { row: 49, name: 'פס קפה פקאן', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_tricolor_20': { row: 50, name: 'טריקולד ק.20', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_pistachio_berry_20': { row: 51, name: 'פיסטוק פירות יער ק.20', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_cheese_crumbs_20': { row: 52, name: 'גבינה פירורים ק.20', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_baked_cheese_20': { row: 53, name: 'גבינה אפויה ק.20', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_rusha_hazelnut_square': { row: 54, name: 'ריבוע רושה אגוזי לוז', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_coffee_pecan_square': { row: 55, name: 'ריבוע קפה פקאן', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_chocolate_fudge': { row: 56, name: "פאדג' שוקולד", category: 'עוגות שלמות', price: 0 },
+  // Whole cakes - עוגות שלמות (rows 45-55)
+  'whole_cakes_fudge_mascarpone_strip': { row: 45, name: "פס פאדג' מסקרפונה", category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_rusha_hazelnut_strip': { row: 46, name: 'פס רושה אגוזי לוז', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_mango_passionfruit_strip': { row: 47, name: 'פס מנגו פסיפלורה', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_coffee_pecan_strip': { row: 48, name: 'פס קפה פקאן', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_tricolor_20': { row: 49, name: 'טריקולד ק.20', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_pistachio_berry_20': { row: 50, name: 'פיסטוק פירות יער ק.20', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_cheese_crumbs_20': { row: 51, name: 'גבינה פירורים ק.20', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_baked_cheese_20': { row: 52, name: 'גבינה אפויה ק.20', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_rusha_hazelnut_square': { row: 53, name: 'ריבוע רושה אגוזי לוז', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_coffee_pecan_square': { row: 54, name: 'ריבוע קפה פקאן', category: 'עוגות שלמות', price: 0 },
+  'whole_cakes_chocolate_fudge': { row: 55, name: "פאדג' שוקולד", category: 'עוגות שלמות', price: 0 },
 
-  // Vitrina desserts - קינוחי ויטרינה (rows 57-68)
-  'vitrina_cashew_dolce': { row: 57, name: "קשיו דולצ'ה", category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_pistachio_berry': { row: 58, name: 'פיסטוק פירות יער', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_pheasant_vanilla_raspberry': { row: 59, name: 'פחזנית וניל פטל', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_sabla_pecan': { row: 60, name: 'סבלה פקאן', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_fruit_tart': { row: 61, name: 'טארט פירות', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_lemon_tart_100': { row: 62, name: 'טארט לימון 100%', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_chocolate_100': { row: 63, name: '100 אחוז שוקולד', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_rusha_hazelnut': { row: 64, name: 'רושה אגוזי לוז', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_paris_brest': { row: 65, name: 'פריז ברסט', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_chocolate_ball': { row: 66, name: 'כדור שוקולד', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_personal_pheasant_vanilla': { row: 67, name: 'פחזנית וניל אישית', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_chocolate_fudge': { row: 68, name: "פאדג' שוקולד", category: 'קינוחי ויטרינה', price: 0 },
+  // Vitrina desserts - קינוחי ויטרינה (rows 56-67)
+  'vitrina_cashew_dolce': { row: 56, name: "קשיו דולצ'ה", category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_pistachio_berry': { row: 57, name: 'פיסטוק פירות יער', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_pheasant_vanilla_raspberry': { row: 58, name: 'פחזנית וניל פטל', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_sabla_pecan': { row: 59, name: 'סבלה פקאן', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_fruit_tart': { row: 60, name: 'טארט פירות', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_lemon_tart_100': { row: 61, name: 'טארט לימון 100%', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_chocolate_100': { row: 62, name: '100 אחוז שוקולד', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_rusha_hazelnut': { row: 63, name: 'רושה אגוזי לוז', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_paris_brest': { row: 64, name: 'פריז ברסט', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_chocolate_ball': { row: 65, name: 'כדור שוקולד', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_personal_pheasant_vanilla': { row: 66, name: 'פחזנית וניל אישית', category: 'קינוחי ויטרינה', price: 0 },
+  'vitrina_chocolate_fudge': { row: 67, name: "פאדג' שוקולד", category: 'קינוחי ויטרינה', price: 0 },
 
-  // Cookies - עוגיות (rows 69-79)
-  'cookies_florentine': { row: 69, name: 'פלורנטין', category: 'עוגיות', price: 0 },
-  'cookies_coffee_almonds': { row: 70, name: 'קפה שקדים', category: 'עוגיות', price: 0 },
-  'cookies_almonds_lemon': { row: 71, name: 'שקדים לימון', category: 'עוגיות', price: 0 },
-  'cookies_pecan': { row: 72, name: 'פקאן', category: 'עוגיות', price: 0 },
-  'cookies_brownies': { row: 73, name: 'בראוניז', category: 'עוגיות', price: 0 },
-  'cookies_butter_hazelnut': { row: 74, name: 'חמאה לוז', category: 'עוגיות', price: 0 },
-  'cookies_parmesan': { row: 75, name: 'פרמזן', category: 'עוגיות', price: 0 },
-  'cookies_dates': { row: 76, name: 'עוגיות תמרים', category: 'עוגיות', price: 0 },
-  'cookies_alfajores': { row: 77, name: 'אלפחורס', category: 'עוגיות', price: 0 },
-  'cookies_pistachio_lag_baomer': { row: 78, name: 'פיסטוק לל"ג', category: 'עוגיות', price: 0 },
-  'cookies_cocoa_chocolate': { row: 79, name: 'קקאו שוקולד', category: 'עוגיות', price: 0 },
+  // Cookies - עוגיות (rows 68-78)
+  'cookies_florentine': { row: 68, name: 'פלורנטין', category: 'עוגיות', price: 0 },
+  'cookies_coffee_almonds': { row: 69, name: 'קפה שקדים', category: 'עוגיות', price: 0 },
+  'cookies_almonds_lemon': { row: 70, name: 'שקדים לימון', category: 'עוגיות', price: 0 },
+  'cookies_pecan': { row: 71, name: 'פקאן', category: 'עוגיות', price: 0 },
+  'cookies_brownies': { row: 72, name: 'בראוניז', category: 'עוגיות', price: 0 },
+  'cookies_butter_hazelnut': { row: 73, name: 'חמאה לוז', category: 'עוגיות', price: 0 },
+  'cookies_parmesan': { row: 74, name: 'פרמזן', category: 'עוגיות', price: 0 },
+  'cookies_dates': { row: 75, name: 'עוגיות תמרים', category: 'עוגיות', price: 0 },
+  'cookies_alfajores': { row: 76, name: 'אלפחורס', category: 'עוגיות', price: 0 },
+  'cookies_pistachio_lag_baomer': { row: 77, name: 'פיסטוק לל"ג', category: 'עוגיות', price: 0 },
+  'cookies_cocoa_chocolate': { row: 78, name: 'קקאו שוקולד', category: 'עוגיות', price: 0 },
 
-  // Various - מוצרים שונים (rows 80-88)
-  'various_mushroom_pastry': { row: 80, name: 'מאפה פטריות', category: 'מוצרים שונים', price: 0 },
-  'various_cheese_berry_pastry': { row: 81, name: 'מאפה גבינה ופירות יער', category: 'מוצרים שונים', price: 0 },
-  'various_basque_cheesecake': { row: 82, name: 'עוגת גבינה באסקית', category: 'מוצרים שונים', price: 0 },
-  'various_yolk_pasteurized': { row: 83, name: 'חלמון מפוסטר', category: 'מוצרים שונים', price: 0 },
-  'various_parmesan_raw': { row: 84, name: 'פרמזן חומר גלם', category: 'מוצרים שונים', price: 0 },
-  'various_sweet_cream': { row: 85, name: 'שמנת מתוקה', category: 'מוצרים שונים', price: 0 },
-  'various_butter': { row: 86, name: 'חמאה', category: 'מוצרים שונים', price: 0 },
-  'various_pistachio_berry_strip': { row: 87, name: 'פס פיסטוק פירות יער', category: 'מוצרים שונים', price: 0 },
-  'various_pressburger_poppy': { row: 88, name: 'פרסבורגר פרג', category: 'מוצרים שונים', price: 0 }
+  // Various - מוצרים שונים (rows 79-87)
+  'various_mushroom_pastry': { row: 79, name: 'מאפה פטריות', category: 'מוצרים שונים', price: 0 },
+  'various_cheese_berry_pastry': { row: 80, name: 'מאפה גבינה ופירות יער', category: 'מוצרים שונים', price: 0 },
+  'various_basque_cheesecake': { row: 81, name: 'עוגת גבינה באסקית', category: 'מוצרים שונים', price: 0 },
+  'various_yolk_pasteurized': { row: 82, name: 'חלמון מפוסטר', category: 'מוצרים שונים', price: 0 },
+  'various_parmesan_raw': { row: 83, name: 'פרמזן חומר גלם', category: 'מוצרים שונים', price: 0 },
+  'various_sweet_cream': { row: 84, name: 'שמנת מתוקה', category: 'מוצרים שונים', price: 0 },
+  'various_butter': { row: 85, name: 'חמאה', category: 'מוצרים שונים', price: 0 },
+  'various_pistachio_berry_strip': { row: 86, name: 'פס פיסטוק פירות יער', category: 'מוצרים שונים', price: 0 },
+  'various_pressburger_poppy': { row: 87, name: 'פרסבורגר פרג', category: 'מוצרים שונים', price: 0 }
 };
