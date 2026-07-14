@@ -349,6 +349,45 @@
         color: var(--text);
       }
 
+      /* Product name suggestions (fuzzy/typo-tolerant match) */
+      .suggestion-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 8px 0;
+      }
+
+      .suggestion-btn {
+        background: var(--white);
+        border: 1.5px solid #c9a227;
+        color: #7a5c00;
+        padding: 7px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .suggestion-btn:active {
+        background: #fff3cd;
+      }
+
+      .suggestion-dismiss {
+        margin-top: 4px;
+      }
+
+      .suggestion-keep-btn {
+        background: none;
+        border: none;
+        color: #8a6d00;
+        text-decoration: underline;
+        font-size: 12.5px;
+        cursor: pointer;
+        font-family: inherit;
+        padding: 4px 0;
+      }
+
       .qty-confirm-ok {
         background: var(--dark-green);
         color: var(--gold);
@@ -1234,11 +1273,11 @@
     <!-- Update Notice Popup -->
     <div class="update-notice-overlay hidden" id="updateNoticeOverlay">
       <div class="update-notice-box">
-        <div class="update-notice-icon">🥐</div>
         <div class="update-notice-title">עדכון מערכת</div>
         <div class="update-notice-body">
-          התווספו מוצרים נוספים לרשימה.<br />
-          נא לבדוק לפני רשימת מוצר עצמאית ב"אחרים".
+          מעכשיו ניתן להוסיף מוצר <b>לצמיתות</b> לרשימה, ישירות מהטופס (הכפתור "➕ הוסף מוצר קבוע
+          חדש" למעלה).<br /><br />
+          אם מדובר במוצר שחוזר על עצמו כמעט כל יום — נא להוסיף אותו כך, ולא כ"אחרים" בכל פעם מחדש.
         </div>
         <button class="update-notice-close" onclick="dismissUpdateNotice()">סגירת ההודעה</button>
       </div>
@@ -2020,6 +2059,7 @@
 
         if (!productName) {
           messageDiv.style.display = 'none';
+          messageDiv.innerHTML = '';
           inputElement.style.borderColor = '';
           return;
         }
@@ -2027,50 +2067,160 @@
         // Special handling: מאפה פרח is the same as קראפין
         const normalizedName = productName.toLowerCase().replace(/\s+/g, ' ');
         if (normalizedName === 'מאפה פרח') {
-          messageDiv.textContent =
-            '⚠️ מוצר "מאפה פרח" זהה למוצר "קראפין" שנמצא בקטגוריית מאפים מתוקים. נא לחפש "קראפין" ברשימת המוצרים.';
-          messageDiv.style.display = 'block';
-          messageDiv.style.color = '#d32f2f';
-          messageDiv.style.backgroundColor = '#ffebee';
-          messageDiv.style.padding = '10px';
-          messageDiv.style.borderRadius = '4px';
-          messageDiv.style.marginTop = '5px';
-          messageDiv.style.fontSize = '14px';
-          inputElement.style.borderColor = '#d32f2f';
+          showValidationBlock_(
+            messageDiv,
+            inputElement,
+            '⚠️ מוצר "מאפה פרח" זהה למוצר "קראפין" שנמצא בקטגוריית מאפים מתוקים. נא לחפש "קראפין" ברשימת המוצרים.'
+          );
           inputElement.value = '';
           return;
         }
 
-        // Check if product exists in pre-listed categories
+        // Exact match against the catalog — hard block, same as before
         const existingProductKey = PRODUCT_KEYS[productName];
         if (existingProductKey) {
-          // Find the category
           let foundCategory = null;
           for (const [catKey, catData] of Object.entries(CATEGORIES)) {
-            if (catData.products.includes(productName)) {
+            const inCategory = catData.products.some(
+              (p) => (typeof p === 'object' ? p.key : PRODUCT_KEYS[p]) === existingProductKey
+            );
+            if (inCategory) {
               foundCategory = catData.name;
               break;
             }
           }
 
           if (foundCategory) {
-            messageDiv.textContent = `⚠️ המוצר "${productName}" כבר קיים ברשימה בקטגוריית: ${foundCategory}. נא לחפש את המוצר ברשימה.`;
-            messageDiv.style.display = 'block';
-            messageDiv.style.color = '#d32f2f';
-            messageDiv.style.backgroundColor = '#ffebee';
-            messageDiv.style.padding = '10px';
-            messageDiv.style.borderRadius = '4px';
-            messageDiv.style.marginTop = '5px';
-            messageDiv.style.fontSize = '14px';
-            inputElement.style.borderColor = '#d32f2f';
+            showValidationBlock_(
+              messageDiv,
+              inputElement,
+              `⚠️ המוצר "${productName}" כבר קיים ברשימה בקטגוריית: ${foundCategory}. נא לחפש את המוצר ברשימה.`
+            );
             inputElement.value = '';
             return;
           }
         }
 
-        // Product is valid
+        // Not an exact match — but it might still be an existing product
+        // typed slightly differently (typo, partial name). Suggest it
+        // instead of silently letting a near-duplicate get added under
+        // "אחרים".
+        const suggestions = findSimilarProducts_(productName, 3);
+        if (suggestions.length > 0) {
+          renderProductSuggestions_(messageDiv, inputElement, counter, productName, suggestions);
+          return;
+        }
+
+        // No exact or fuzzy match — genuinely a new product
         messageDiv.style.display = 'none';
+        messageDiv.innerHTML = '';
         inputElement.style.borderColor = '#4caf50';
+      }
+
+      function showValidationBlock_(messageDiv, inputElement, text) {
+        messageDiv.innerHTML = text;
+        messageDiv.style.display = 'block';
+        messageDiv.style.color = '#d32f2f';
+        messageDiv.style.backgroundColor = '#ffebee';
+        messageDiv.style.padding = '10px';
+        messageDiv.style.borderRadius = '4px';
+        messageDiv.style.marginTop = '5px';
+        messageDiv.style.fontSize = '14px';
+        inputElement.style.borderColor = '#d32f2f';
+      }
+
+      function renderProductSuggestions_(
+        messageDiv,
+        inputElement,
+        counter,
+        typedName,
+        suggestions
+      ) {
+        const buttonsHTML = suggestions
+          .map((s) => {
+            const categoryKey = KEY_TO_CATEGORY[s.key] || '';
+            const categoryName = CATEGORIES[categoryKey] ? CATEGORIES[categoryKey].name : '';
+            return `
+              <button type="button" class="suggestion-btn" onclick="applyProductSuggestion(${counter}, '${s.key}')">
+                ${s.name}${categoryName ? ' (' + categoryName + ')' : ''}
+              </button>`;
+          })
+          .join('');
+
+        messageDiv.innerHTML = `
+          <div>💡 אולי התכוונת ל:</div>
+          <div class="suggestion-buttons">${buttonsHTML}</div>
+          <div class="suggestion-dismiss">
+            <button type="button" class="suggestion-keep-btn" onclick="dismissProductSuggestion(${counter})">
+              לא, זה מוצר חדש — השאר "${typedName}" כמוצר מותאם אישית
+            </button>
+          </div>
+        `;
+        messageDiv.style.display = 'block';
+        messageDiv.style.color = '#8a6d00';
+        messageDiv.style.backgroundColor = '#fff8e1';
+        messageDiv.style.padding = '10px';
+        messageDiv.style.borderRadius = '6px';
+        messageDiv.style.marginTop = '5px';
+        messageDiv.style.fontSize = '14px';
+        inputElement.style.borderColor = '#c9a227';
+      }
+
+      function dismissProductSuggestion(counter) {
+        const messageDiv = document.getElementById(`validation_message_${counter}`);
+        const inputElement = document.querySelector(
+          `#custom_product_${counter} .custom-name-input`
+        );
+        if (messageDiv) {
+          messageDiv.style.display = 'none';
+          messageDiv.innerHTML = '';
+        }
+        if (inputElement) inputElement.style.borderColor = '#4caf50';
+      }
+
+      // Moves whatever quantity/notes were already typed into the custom
+      // ("אחרים") entry over to the matched catalog product, expands its
+      // category so it's visible, and removes the custom entry.
+      function applyProductSuggestion(counter, productKey) {
+        const customEl = document.getElementById(`custom_product_${counter}`);
+        if (!customEl) return;
+
+        const qtyInput = document.getElementById(`custom_${counter}_qty`);
+        const notesInput = customEl.querySelector('.notes-field');
+        const qty = qtyInput ? parseInt(qtyInput.value, 10) || 0 : 0;
+        const notes = notesInput ? notesInput.value.trim() : '';
+
+        const categoryKey = KEY_TO_CATEGORY[productKey];
+        if (categoryKey) {
+          const content = document.getElementById(`${categoryKey}-content`);
+          const header = document.querySelector(`[data-category="${categoryKey}"]`);
+          if (content && !content.classList.contains('active')) {
+            content.classList.add('active');
+            if (header) header.classList.add('active');
+          }
+        }
+
+        const targetQtyInput = document.getElementById(`${productKey}_qty`);
+        if (targetQtyInput) {
+          if (qty > 0) {
+            targetQtyInput.value = qty;
+            setQtyValue(productKey, qty);
+            updateQtyStyle(targetQtyInput, qty);
+          }
+          if (notes) {
+            const targetNotes = document.querySelector(`textarea[name="${productKey}_notes"]`);
+            if (targetNotes) targetNotes.value = notes;
+          }
+        }
+
+        removeCustomProduct(counter);
+
+        if (targetQtyInput) {
+          setTimeout(() => {
+            targetQtyInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            targetQtyInput.focus();
+          }, 100);
+        }
       }
 
       function removeCustomProduct(counter) {
@@ -2447,7 +2597,7 @@
         resultsEl.classList.remove('open');
       }
 
-      const UPDATE_NOTICE_KEY = 'zuza_update_notice_v1_dismissed';
+      const UPDATE_NOTICE_KEY = 'zuza_update_notice_v2_fixed_product_dismissed';
 
       function showUpdateNoticeIfNeeded() {
         if (!localStorage.getItem(UPDATE_NOTICE_KEY)) {
@@ -2469,7 +2619,124 @@
         CATEGORY_NAME_TO_KEY[data.name] = key;
       });
 
-      // Fetches the full product list from the backend (base catalog +
+      // Reverse lookup: productKey -> categoryKey. Used to jump to / expand
+      // the right category when a fuzzy-match suggestion is accepted.
+      // Kept up to date whenever a fixed product is added (see
+      // addFixedProductToCurrentForm below).
+      const KEY_TO_CATEGORY = {};
+      Object.entries(CATEGORIES).forEach(([catKey, data]) => {
+        data.products.forEach((p) => {
+          const key = typeof p === 'object' ? p.key : PRODUCT_KEYS[p];
+          if (key) KEY_TO_CATEGORY[key] = catKey;
+        });
+      });
+
+      // ------------------------------------------------------------------
+      // Fuzzy / typo-tolerant product name matching
+      //
+      // Used when someone types a custom ("אחרים") product name that's
+      // actually already in the catalog under a slightly different
+      // spelling — e.g. "פולנטה" should suggest "מאפה פולנטה", and even a
+      // typo like "פולנתה" (ט/ת mix-up) or "ווניל פתל" (extra letter +
+      // ט/ת mix-up, matching "פחזנית וניל פטל") should still surface a
+      // suggestion. Approach: normalize obvious Hebrew typo sources (final-
+      // letter forms, punctuation), then score by (a) direct substring
+      // containment — the strong, common case of a partial name — and
+      // (b) per-word edit-distance matching, so a multi-word typo'd phrase
+      // still matches against a multi-word catalog name. This is plain
+      // string comparison with no external dependency, so it stays fast
+      // even as the catalog grows into the hundreds of products.
+      // ------------------------------------------------------------------
+
+      function normalizeForFuzzyMatch_(str) {
+        return (str || '')
+          .toString()
+          .trim()
+          .replace(/[׳'"״]/g, '')
+          .replace(/\s+/g, ' ')
+          .replace(/ך/g, 'כ')
+          .replace(/ם/g, 'מ')
+          .replace(/ן/g, 'נ')
+          .replace(/ף/g, 'פ')
+          .replace(/ץ/g, 'צ');
+      }
+
+      // Classic Levenshtein edit distance. Product names are short, so an
+      // O(n*m) DP table is trivial performance-wise.
+      function levenshteinDistance_(a, b) {
+        const m = a.length;
+        const n = b.length;
+        if (m === 0) return n;
+        if (n === 0) return m;
+
+        const dp = new Array(n + 1);
+        for (let j = 0; j <= n; j++) dp[j] = j;
+
+        for (let i = 1; i <= m; i++) {
+          let prev = dp[0];
+          dp[0] = i;
+          for (let j = 1; j <= n; j++) {
+            const temp = dp[j];
+            dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
+            prev = temp;
+          }
+        }
+        return dp[n];
+      }
+
+      function tokenSimilarity_(tokA, tokB) {
+        if (!tokA.length || !tokB.length) return 0;
+        if (tokA === tokB) return 1;
+        if (tokA.includes(tokB) || tokB.includes(tokA)) return 0.92;
+        const dist = levenshteinDistance_(tokA, tokB);
+        const maxLen = Math.max(tokA.length, tokB.length);
+        return Math.max(0, 1 - dist / maxLen);
+      }
+
+      // Scores how similar a typed name is to a catalog product name.
+      function fuzzyProductScore_(inputNorm, candidateNorm) {
+        if (!inputNorm || !candidateNorm) return 0;
+        if (inputNorm === candidateNorm) return 1;
+        if (candidateNorm.includes(inputNorm) || inputNorm.includes(candidateNorm)) return 0.95;
+
+        const inputTokens = inputNorm.split(' ').filter(Boolean);
+        const candidateTokens = candidateNorm.split(' ').filter(Boolean);
+        if (!inputTokens.length || !candidateTokens.length) return 0;
+
+        let total = 0;
+        inputTokens.forEach((itok) => {
+          let best = 0;
+          candidateTokens.forEach((ctok) => {
+            const s = tokenSimilarity_(itok, ctok);
+            if (s > best) best = s;
+          });
+          total += best;
+        });
+        return total / inputTokens.length;
+      }
+
+      // Finds catalog products (base + fixed) whose name resembles
+      // `rawInput`. Returns up to maxResults matches, sorted by descending
+      // similarity, above a threshold tuned to catch 1-2 character typos
+      // on realistic (Hebrew, multi-word) product names without flooding
+      // suggestions for genuinely unrelated names.
+      function findSimilarProducts_(rawInput, maxResults) {
+        const inputNorm = normalizeForFuzzyMatch_(rawInput);
+        if (!inputNorm) return [];
+
+        const scored = [];
+        Object.keys(PRODUCT_KEYS).forEach((name) => {
+          const candidateNorm = normalizeForFuzzyMatch_(name);
+          const score = fuzzyProductScore_(inputNorm, candidateNorm);
+          if (score >= 0.62) {
+            scored.push({ name: name, key: PRODUCT_KEYS[name], score: score });
+          }
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+        return scored.slice(0, maxResults || 3);
+      }
+
       // Fetches the full product list from the backend (base catalog +
       // every permanently-registered "מוצר קבוע") and injects any product
       // not already known locally directly into the ALREADY-RENDERED form
@@ -2592,6 +2859,7 @@
           CATEGORIES[categoryKey].products.push({ key: product.key, name: product.name });
         }
         PRODUCT_KEYS[product.name] = product.key;
+        KEY_TO_CATEGORY[product.key] = categoryKey;
 
         const body = document.querySelector(`#${categoryKey}-content .category-body`);
         if (body && !document.getElementById(`${product.key}_qty`)) {
@@ -2680,6 +2948,8 @@
       window.openAddFixedProductModal = openAddFixedProductModal;
       window.closeAddFixedProductModal = closeAddFixedProductModal;
       window.submitAddFixedProduct = submitAddFixedProduct;
+      window.applyProductSuggestion = applyProductSuggestion;
+      window.dismissProductSuggestion = dismissProductSuggestion;
 
       // Start
       if (document.readyState === 'loading') {
