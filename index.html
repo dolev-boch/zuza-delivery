@@ -1273,6 +1273,7 @@
     <!-- Update Notice Popup -->
     <div class="update-notice-overlay hidden" id="updateNoticeOverlay">
       <div class="update-notice-box">
+        <div class="update-notice-icon">🍞</div>
         <div class="update-notice-title">עדכון מערכת</div>
         <div class="update-notice-body">
           מעכשיו ניתן להוסיף מוצר <b>לצמיתות</b> לרשימה, ישירות מהטופס (הכפתור "➕ הוסף מוצר קבוע
@@ -2770,9 +2771,12 @@
         }
       }
 
+      let pendingFixedProductSubmission = null;
+
       function openAddFixedProductModal() {
         document.getElementById('fixedProductName').value = '';
         document.getElementById('fixedProductCategory').value = '';
+        pendingFixedProductSubmission = null;
         setFixedProductMsg('', '');
         setFixedProductSubmitEnabled(true);
         document.getElementById('fixedProductOverlay').classList.add('show');
@@ -2811,6 +2815,74 @@
           return;
         }
 
+        // Scan the existing catalog (base + already-known fixed products)
+        // for an exact or near-identical match BEFORE ever contacting the
+        // server — the same typo-tolerant algorithm used for the "אחרים"
+        // custom-product field, so re-entering an existing product (with
+        // or without a typo) gets caught and confirmed instead of quietly
+        // creating a permanent near-duplicate.
+        const matches = findSimilarProducts_(name, 3);
+        const exactMatch = matches.find(
+          (m) => normalizeForFuzzyMatch_(m.name) === normalizeForFuzzyMatch_(name)
+        );
+
+        if (exactMatch) {
+          setFixedProductMsg(
+            `⚠️ המוצר "${exactMatch.name}" כבר קיים ברשימה. חפש/י אותו בטופס במקום להוסיף שוב.`,
+            'error'
+          );
+          return;
+        }
+
+        if (matches.length > 0) {
+          pendingFixedProductSubmission = { name, category };
+          renderFixedProductSuggestions_(matches);
+          return;
+        }
+
+        await actuallySubmitFixedProduct(name, category);
+      }
+
+      function renderFixedProductSuggestions_(matches) {
+        const messageEl = document.getElementById('fixedProductMsg');
+
+        const itemsHTML = matches
+          .map((m) => {
+            const catKey = KEY_TO_CATEGORY[m.key];
+            const catName = catKey && CATEGORIES[catKey] ? CATEGORIES[catKey].name : '';
+            return `<div style="margin: 3px 0;">• <b>${m.name}</b>${catName ? ' (' + catName + ')' : ''}</div>`;
+          })
+          .join('');
+
+        messageEl.innerHTML = `
+          <div>💡 נמצאו מוצרים דומים בקטלוג — ייתכן שהמוצר כבר קיים:</div>
+          <div style="margin: 8px 0;">${itemsHTML}</div>
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+            <button type="button" class="suggestion-keep-btn" onclick="closeAddFixedProductModal()">
+              אחד מאלה הוא המוצר המבוקש — סגור/י וחפש/י אותו בטופס
+            </button>
+            <button type="button" class="suggestion-btn" onclick="confirmAddFixedProductAnyway()">
+              לא, זה מוצר שונה — הוסף/י בכל זאת
+            </button>
+          </div>
+        `;
+        messageEl.style.display = 'block';
+        messageEl.style.color = '#8a6d00';
+        messageEl.style.backgroundColor = '#fff8e1';
+        messageEl.style.padding = '10px';
+        messageEl.style.borderRadius = '6px';
+        messageEl.style.textAlign = 'center';
+        messageEl.style.fontSize = '13px';
+      }
+
+      async function confirmAddFixedProductAnyway() {
+        if (!pendingFixedProductSubmission) return;
+        const { name, category } = pendingFixedProductSubmission;
+        pendingFixedProductSubmission = null;
+        await actuallySubmitFixedProduct(name, category);
+      }
+
+      async function actuallySubmitFixedProduct(name, category) {
         setFixedProductSubmitEnabled(false);
         setFixedProductMsg('שולח...', '');
 
@@ -2950,6 +3022,7 @@
       window.submitAddFixedProduct = submitAddFixedProduct;
       window.applyProductSuggestion = applyProductSuggestion;
       window.dismissProductSuggestion = dismissProductSuggestion;
+      window.confirmAddFixedProductAnyway = confirmAddFixedProductAnyway;
 
       // Start
       if (document.readyState === 'loading') {
