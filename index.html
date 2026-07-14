@@ -2470,10 +2470,15 @@
       });
 
       // Fetches the full product list from the backend (base catalog +
-      // every permanently-registered "מוצר קבוע") and merges any product
-      // not already known locally into CATEGORIES/PRODUCT_KEYS, so
-      // permanently-added products show up automatically — with zero code
-      // deploys — on every future page load.
+      // Fetches the full product list from the backend (base catalog +
+      // every permanently-registered "מוצר קבוע") and injects any product
+      // not already known locally directly into the ALREADY-RENDERED form
+      // (see addFixedProductToCurrentForm below). Called in the
+      // BACKGROUND, after the page has already rendered from the local
+      // hardcoded catalog — Apps Script calls can take a couple of
+      // seconds, and there's no reason to make the whole page wait on
+      // that just to show products that are the rare exception, not the
+      // common case.
       async function loadFixedProductsFromServer() {
         try {
           const url = `${CONFIG.API_URL}?action=get_products_list`;
@@ -2487,15 +2492,14 @@
             if (!p.isFixedCustom) return; // base catalog is already hardcoded locally
             if (PRODUCT_KEYS[p.name]) return; // already known locally
 
-            const categoryKey = CATEGORY_NAME_TO_KEY[p.category];
-            if (!categoryKey || !CATEGORIES[categoryKey]) return; // unknown category, skip defensively
-
-            CATEGORIES[categoryKey].products.push({ key: p.key, name: p.name });
-            PRODUCT_KEYS[p.name] = p.key;
+            addFixedProductToCurrentForm(
+              { key: p.key, name: p.name, category: p.category },
+              { autoExpand: false } // don't force-open categories just because a background sync found something
+            );
           });
         } catch (err) {
           console.warn('Could not load permanent products from server:', err);
-          // Non-fatal: the form still works with the locally-known product list.
+          // Non-fatal: the form still works fully with the locally-known product list.
         }
       }
 
@@ -2569,10 +2573,15 @@
         }
       }
 
-      // Injects the newly-added product into the already-rendered form
-      // WITHOUT re-rendering anything else, so no in-progress quantities
-      // entered elsewhere on the form are ever touched.
-      function addFixedProductToCurrentForm(product) {
+      // Injects a fixed product into the already-rendered form WITHOUT
+      // re-rendering anything else, so no in-progress quantities entered
+      // elsewhere on the form are ever touched. Used both right after a
+      // live "add" (autoExpand: true, the default — jump to it so it's
+      // obviously there) and by the background sync on page load
+      // (autoExpand: false — just make it available, don't change what's
+      // open).
+      function addFixedProductToCurrentForm(product, options = {}) {
+        const autoExpand = options.autoExpand !== false;
         const categoryKey = CATEGORY_NAME_TO_KEY[product.category];
         if (!categoryKey || !CATEGORIES[categoryKey]) return;
 
@@ -2599,18 +2608,18 @@
 
         buildSearchIndex();
 
-        // Open the category and scroll to the new product so it's obvious it was added
-        const content = document.getElementById(`${categoryKey}-content`);
-        const header = document.querySelector(`[data-category="${categoryKey}"]`);
-        if (content && !content.classList.contains('active')) {
-          content.classList.add('active');
-          if (header) header.classList.add('active');
+        if (autoExpand) {
+          // Open the category and make clear the new product was added
+          const content = document.getElementById(`${categoryKey}-content`);
+          const header = document.querySelector(`[data-category="${categoryKey}"]`);
+          if (content && !content.classList.contains('active')) {
+            content.classList.add('active');
+            if (header) header.classList.add('active');
+          }
         }
       }
 
-      async function initializeApp() {
-        await loadFixedProductsFromServer();
-
+      function initializeApp() {
         const container = document.getElementById('categoriesContainer');
         let html = '';
 
@@ -2645,6 +2654,12 @@
         console.log('Product mappings loaded:', Object.keys(PRODUCT_KEYS).length);
 
         showUpdateNoticeIfNeeded();
+
+        // Fetch + merge any permanently-added "מוצר קבוע" products in the
+        // background — NOT awaited here. The base catalog above is already
+        // fully rendered and usable; this just adds anything extra once it
+        // arrives, without making first paint wait on an Apps Script call.
+        loadFixedProductsFromServer();
       }
 
       // Global functions

@@ -1309,13 +1309,14 @@
       });
 
       async function loadFixedProductsIntoModal() {
+        let foundNew = false;
         try {
           const url = `${SCRIPT_URL}?action=get_products_list`;
           const response = await fetch(url, { method: 'GET', redirect: 'follow' });
-          if (!response.ok) return;
+          if (!response.ok) return foundNew;
 
           const result = await response.json();
-          if (!result.success || !Array.isArray(result.products)) return;
+          if (!result.success || !Array.isArray(result.products)) return foundNew;
 
           result.products.forEach((p) => {
             if (!p.isFixedCustom) return;
@@ -1326,21 +1327,30 @@
 
             CATEGORIES[categoryKey].products.push({ key: p.key, name: p.name });
             PRODUCT_KEYS[p.name] = p.key;
+            foundNew = true;
           });
         } catch (err) {
           console.warn('Could not load permanent products for add-product modal:', err);
         }
+        return foundNew;
       }
 
       // ============================================================================
       // ADD PRODUCTS MODAL FUNCTIONS
       // ============================================================================
 
-      async function openAddProductsModal() {
+      function openAddProductsModal() {
         document.getElementById('addProductsModal').classList.add('show');
         document.body.style.overflow = 'hidden';
-        await loadFixedProductsIntoModal();
+
+        // Render immediately from the local catalog — don't make the modal
+        // wait on an Apps Script round-trip just to open. Refresh only if
+        // the background check actually finds a permanently-added product
+        // that isn't in the local list yet (the common case: nothing new).
         renderModalCategories();
+        loadFixedProductsIntoModal().then((foundNew) => {
+          if (foundNew) renderModalCategories();
+        });
       }
 
       function closeAddProductsModal() {
