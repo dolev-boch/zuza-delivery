@@ -150,7 +150,63 @@
     }
   }
 
+  // --------------------------------------------------------------------------
+  // Order copy by email — independent of Google Sheets / Apps Script.
+  // The form data is sent straight from the browser to FormSubmit (free, no
+  // account), which emails it. Fire-and-forget: it never blocks or fails the
+  // real submission, and each submission_id is emailed at most once.
+  // --------------------------------------------------------------------------
+  const ORDER_COPY_ENDPOINT = 'https://formsubmit.co/ajax/dolev.boch@gmail.com';
+  const emailedSubmissions = new Set();
+
+  function buildOrderCopyFields(data) {
+    const products = data.products || [];
+    const lines = products.map((p, i) => {
+      const notes = p.notes ? ` — הערה: ${p.notes}` : '';
+      return `${i + 1}. ${p.name} (${p.category}): ${parseInt(p.quantity, 10) || 0}${notes}`;
+    });
+    const totalUnits = products.reduce((sum, p) => sum + (parseInt(p.quantity, 10) || 0), 0);
+    return {
+      _subject: `הזמנה מטופס זוזה - ${data.delivery_date}${data.filler_name ? ' - ' + data.filler_name : ''}`,
+      _template: 'table',
+      _captcha: 'false',
+      'תאריך משלוח': data.delivery_date || '',
+      'ממלא התעודה': data.filler_name || '',
+      'מספר תעודה': data.certificate_number || '',
+      'סוג שליחה': data.action === 'update_request' ? 'עדכון להזמנה קיימת' : 'הזמנה',
+      'מספר מוצרים': String(products.length),
+      'סה"כ יחידות': String(totalUnits),
+      'מוצרים': lines.join('\n'),
+      'מזהה שליחה': data.submission_id || '',
+    };
+  }
+
+  function sendOrderCopyEmail(data, { fetchImpl, timeoutMs = 15000 } = {}) {
+    if (!data || !data.submission_id || emailedSubmissions.has(data.submission_id)) {
+      return Promise.resolve(false);
+    }
+    emailedSubmissions.add(data.submission_id);
+    const doFetch = fetchImpl || root.fetch.bind(root);
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = setTimeout(() => controller && controller.abort(), timeoutMs);
+    return doFetch(ORDER_COPY_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(buildOrderCopyFields(data)),
+      keepalive: true, // finishes even if the page is closed right after sending
+      signal: controller ? controller.signal : undefined,
+    })
+      .then((response) => response.ok)
+      .catch((err) => {
+        console.warn('Order copy email failed (order itself is unaffected):', err);
+        return false;
+      })
+      .finally(() => clearTimeout(timeoutId));
+  }
+
   const api = {
+    buildOrderCopyFields,
+    sendOrderCopyEmail,
     SHALEV_WHATSAPP_NUMBER,
     buildWhatsAppMessage,
     buildWhatsAppUrl,
