@@ -6,10 +6,10 @@
 // Shalev gets an email with an approval link, and only after he approves are
 // the quantities in the day sheet REPLACED (not added / subtracted).
 //
-// Self-contained on purpose: relies only on globals that Code.gs already
-// defines (SPREADSHEET_ID, EMAIL_RECIPIENT, COLUMNS, PRODUCT_ROW_MAP,
-// CUSTOM_PRODUCTS_START_ROW, LOCK_TIMEOUT, getIsraeliTime, createJsonResponse),
-// so it can be added next to the live Code.gs without replacing it.
+// Self-contained on purpose: relies only on globals that Code.gs /
+// CustomProducts.gs already define (SPREADSHEET_ID, EMAIL_RECIPIENT, COLUMNS,
+// LOCK_TIMEOUT, getIsraeliTime, createJsonResponse, getCombinedProductMap,
+// getCustomProductsStartRow).
 // ============================================================================
 
 const UPDATES_SHEET_NAME = 'בקשות עדכון';
@@ -33,6 +33,18 @@ const UPDATE_HEADERS = [
   'מזהה בקשה', 'טוקן', 'נוצר', 'תאריך משלוח', 'גיליון', 'ממלא', 'מספר תעודה',
   'מוצרים (JSON)', 'סטטוס', 'אושר בתאריך', 'מזהה שליחה'
 ];
+
+// Product rows: base catalog + permanent ("מוצר קבוע") products, and the row
+// where free-text "אחרים" products start — both dynamic (CustomProducts.gs).
+function ouProductMap() {
+  return typeof getCombinedProductMap === 'function' ? getCombinedProductMap() : PRODUCT_ROW_MAP;
+}
+
+function ouCustomStartRow() {
+  return typeof getCustomProductsStartRow === 'function'
+    ? getCustomProductsStartRow()
+    : CUSTOM_PRODUCTS_START_ROW;
+}
 
 // ============================================================================
 // ROUTING (called from doPost / doGet / handleDeliverySubmission in Code.gs)
@@ -298,21 +310,21 @@ function saveUpdateRequest(ss, daySheet, data, day) {
 
 /**
  * Finds the sheet row for a requested product.
- * Regular products: PRODUCT_ROW_MAP row when column A there holds that name
+ * Catalog products (base + permanent): their mapped row when column A there holds that name
  * (needed for names that exist twice, e.g. "פאדג' שוקולד"), otherwise the
  * first row with that name above the custom area.
- * Anything else (custom "אחרים" products, permanent products added from the
- * form): the first row anywhere in the sheet with that name.
+ * Anything else (free-text "אחרים" products): the first row anywhere in the
+ * sheet with that name.
  */
-function findProductRow(colA, product) {
-  const info = PRODUCT_ROW_MAP[product.key];
+function findProductRow(colA, product, productMap, customStartRow) {
+  const info = productMap[product.key];
   const isRegular = info && !String(product.key).startsWith('custom_');
   const name = isRegular ? info.name : product.name;
 
   if (isRegular) {
     const mapped = info.row;
     if (colA[mapped - 2] !== undefined && String(colA[mapped - 2]).trim() === name) return mapped;
-    for (let i = 0; i < colA.length && i + 2 < CUSTOM_PRODUCTS_START_ROW; i++) {
+    for (let i = 0; i < colA.length && i + 2 < customStartRow; i++) {
       if (String(colA[i]).trim() === name) return i + 2;
     }
     return null;
@@ -333,8 +345,10 @@ function currentQuantitiesFor(sheet, products) {
   const colA = readColumnA(sheet);
   const lastRow = sheet.getLastRow();
   const qty = lastRow >= 2 ? sheet.getRange(2, COLUMNS.QUANTITY, lastRow - 1, 1).getValues() : [];
+  const productMap = ouProductMap();
+  const customStartRow = ouCustomStartRow();
   return products.map(function(p) {
-    const row = findProductRow(colA, p);
+    const row = findProductRow(colA, p, productMap, customStartRow);
     return row ? (parseInt(qty[row - 2][0], 10) || 0) : 0;
   });
 }
@@ -427,12 +441,14 @@ function approveUpdateRequest(requestId, token) {
  */
 function applyReplacementQuantities(sheet, products, approvedAt) {
   const colA = readColumnA(sheet);
-  let appendRow = Math.max(sheet.getLastRow() + 1, CUSTOM_PRODUCTS_START_ROW);
+  const productMap = ouProductMap();
+  const customStartRow = ouCustomStartRow();
+  let appendRow = Math.max(sheet.getLastRow() + 1, customStartRow);
   const applied = [];
 
   products.forEach(function(p) {
     const newQty = Math.max(0, parseInt(p.quantity, 10) || 0);
-    let row = findProductRow(colA, p);
+    let row = findProductRow(colA, p, productMap, customStartRow);
     let before = 0;
 
     if (row) {
@@ -442,7 +458,7 @@ function applyReplacementQuantities(sheet, products, approvedAt) {
       sheet.getRange(row, COLUMNS.QUANTITY).setValue(newQty);
       sheet.getRange(row, COLUMNS.NOTES).setValue(currentNotes ? currentNotes + ' | ' + note : note);
     } else {
-      if (String(p.key).startsWith('custom_') === false && PRODUCT_ROW_MAP[p.key]) {
+      if (String(p.key).startsWith('custom_') === false && productMap[p.key]) {
         Logger.log('applyReplacementQuantities: regular product not found in sheet: ' + p.name);
         applied.push({ name: p.name, before: null, after: null, skipped: true });
         return;

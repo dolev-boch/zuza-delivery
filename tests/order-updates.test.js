@@ -26,7 +26,7 @@ const croissant = (quantity) => ({
 function setup() {
   const b = loadBackend();
   const sheet = b.addDaySheet('05');
-  const row = (key) => b.exported.PRODUCT_ROW_MAP[key].row;
+  const row = (key) => b.exported.getCombinedProductMap()[key].row;
   const qty = (key) => sheet.get(row(key), b.exported.COLUMNS.QUANTITY);
   const updates = () => b.ss.getSheetByName(b.exported.UPDATES_SHEET_NAME);
   return { ...b, sheet, row, qty, updates };
@@ -136,10 +136,23 @@ test('approved custom product missing from the sheet is appended in the custom a
 
   const r = t.exported.findProductRow(
     t.sheet.getRange(2, 1, t.sheet.getLastRow() - 1, 1).getValues().map((x) => x[0]),
-    { key: 'custom_1', name: 'עוגה מיוחדת' }
+    { key: 'custom_1', name: 'עוגה מיוחדת' },
+    t.exported.getCombinedProductMap(),
+    t.exported.getCustomProductsStartRow()
   );
-  assert.ok(r >= t.exported.CUSTOM_PRODUCTS_START_ROW);
+  assert.ok(r >= t.exported.getCustomProductsStartRow());
   assert.equal(t.sheet.get(r, 3), 2);
+});
+
+test('permanent ("מוצר קבוע") product update replaces its own row, not a new אחרים row', () => {
+  const t = setup();
+  t.post(order('s1', [croissant(1)]));
+  const fixed = { key: 'fixed_test_product', name: 'מוצר קבוע לבדיקה', category: 'מאפים מתוקים', quantity: '6' };
+  t.post(order('s2', [fixed]));
+  const { id, token } = approvalParams(t.emails[t.emails.length - 1]);
+  t.get({ action: 'approve_update', id, token });
+  assert.equal(t.qty('fixed_test_product'), 6);
+  assert.equal(t.sheet.get(t.exported.getCustomProductsStartRow(), 1), '', 'nothing appended to אחרים');
 });
 
 test('check_day reports existing orders and whose submission landed', () => {

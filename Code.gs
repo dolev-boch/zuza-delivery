@@ -7,7 +7,23 @@
 const SPREADSHEET_ID = '1U6u_j9lsTwDQ52mnJWJM1eIZ2CqbmqiwBqEQnD21Ia4';
 const EMAIL_RECIPIENT = '6b1b9b@gmail.com';
 const EMAIL_MANAGER = 'zuzatiberias@gmail.com';
+const EMAIL_EDEN = 'edenpatis@gmail.com';
 const CONFIRMATION_URL = 'https://zuza-delivery.vercel.app/confirm.html';
+
+const HEBREW_MONTH_NAMES = [
+  'ינואר',
+  'פברואר',
+  'מרץ',
+  'אפריל',
+  'מאי',
+  'יוני',
+  'יולי',
+  'אוגוסט',
+  'ספטמבר',
+  'אוקטובר',
+  'נובמבר',
+  'דצמבר',
+];
 
 // System constants
 const LOCK_TIMEOUT = 30000;
@@ -15,9 +31,23 @@ const MAX_EMAIL_RETRIES = 3;
 const EMAIL_RETRY_DELAY = 1000;
 
 // Sheet structure constants
-const CUSTOM_PRODUCTS_START_ROW = 88; // Row 87 is last regular product, 88+ for אחרים
+// NOTE: these are the BASE boundary only (before any "מוצר קבוע" is added).
+// Live code must use getCustomProductsStartRow() (CustomProducts.gs), which
+// accounts for permanently-registered fixed products. Kept here only for
+// reference / any external tooling that reads this file's constants.
+const CUSTOM_PRODUCTS_START_ROW = 88; // Row 87 is last regular product, 88+ for אחרים (base state)
 const SUMMARY_SHEET_NAME = 'סיכום חודש';
-const SUMMARY_CUSTOM_START_ROW = 88; // Custom products start at row 88 in summary
+const SUMMARY_CUSTOM_START_ROW = 88; // Base state only — see getCustomProductsStartRow()
+
+// Fixed row where a summary of every "אחרים" (free-text custom) product is
+// written — one row per unique product name, quantity summed across every
+// day-tab — see updateAchrimDetailedLog(). This is intentionally a fixed
+// row, not the dynamic getCustomProductsStartRow() boundary (which is
+// where "מוצר קבוע" products end and used to be where this report lived
+// too, causing confusion between the two areas). NOTE: if enough fixed
+// products are ever registered that the dynamic product area reaches this
+// row, updateAchrimDetailedLog() logs a warning — see its comments.
+const ACHRIM_LOG_START_ROW = 118;
 
 // Column definitions
 const COLUMNS = {
@@ -31,7 +61,7 @@ const COLUMNS = {
   FILLER_NAME: 8,
   SUBMISSION_ID: 9,
   CONFIRMATION_STATUS: 10,
-  CONFIRMATION_TIME: 11
+  CONFIRMATION_TIME: 11,
 };
 
 // ============================================================================
@@ -53,10 +83,11 @@ function doPost(e) {
       return handleUpdateRequest(data);
     } else if (data.action === 'get_products_list') {
       return handleGetProductsList();
+    } else if (data.action === 'add_fixed_product') {
+      return handleAddFixedProduct(data);
     } else {
       return handleDeliverySubmission(data);
     }
-
   } catch (error) {
     Logger.log('ERROR in doPost: ' + error.toString());
     return createJsonResponse({ success: false, error: error.toString() });
@@ -93,8 +124,22 @@ function doGet(e) {
       return handleGetProductsList();
     }
 
-    return createJsonResponse({ success: true, message: 'API is working' });
+    if (action === 'get_fixed_product_categories') {
+      return createJsonResponse({ success: true, categories: ALLOWED_FIXED_PRODUCT_CATEGORIES });
+    }
 
+    if (action === 'add_fixed_product') {
+      // Served via GET (not POST) so the browser can actually read the
+      // JSON response — this app's POST submissions use mode:'no-cors' and
+      // get an opaque response, which would make it impossible to report
+      // success/failure or the assigned product key back to the user.
+      return handleAddFixedProduct({
+        name: e.parameter.name,
+        category: e.parameter.category,
+      });
+    }
+
+    return createJsonResponse({ success: true, message: 'API is working' });
   } catch (error) {
     Logger.log('ERROR in doGet: ' + error.toString());
     return createJsonResponse({ success: false, error: error.toString() });
@@ -110,10 +155,25 @@ function onOpen() {
 
   ui.createMenu('סיכום חודש')
     .addItem('עדכון סיכום חודש', 'manualUpdateSummarySheet')
+    .addItem('🎨 הדגשת מחירים חסרים/0/שגיאה — הפעלה חד פעמית', 'manualApplyZeroPriceHighlight')
+    .addItem('🔍 בדיקת זיהוי עמודות בסיכום', 'diagnoseSummaryColumnMapping')
     .addToUi();
 
   ui.createMenu('מוצרים חדשים')
     .addItem('הוסף מוצרים חדשים לכל הגיליונות (01–31)', 'manualAddNewProducts')
+    .addToUi();
+
+  ui.createMenu('🍰 מוצרים קבועים')
+    .addItem('🗑️ מחיקת מוצר קבוע', 'openDeleteFixedProductDialog')
+    .addItem('🔧 סידור/תיקון מוצרים קבועים לפי קטגוריה', 'manualRepairFixedProductsOrder')
+    .addToUi();
+
+  ui.createMenu('📧 תזכורת אישורים')
+    .addItem(
+      '▶️ הפעלת תזכורת יומית (09:45) — הגדרה חד פעמית',
+      'createPendingConfirmationsReminderTrigger'
+    )
+    .addItem('✉️ שליחת תזכורת עכשיו (בדיקה)', 'manualSendPendingConfirmationsReminderEmail')
     .addToUi();
 
   ui.createMenu('🗂️ גיבוי ואיפוס')
@@ -137,20 +197,25 @@ function runCleanupDuplicatesOnAllSheets() {
   const confirm = ui.alert(
     'ניקוי שורות כפולות',
     'פעולה זו תסרוק את כל גיליונות 01–31 ותמחק שמות מוצרים שיושבים בשורה שגויה (לא תואמת את מפת המוצרים).\n\n' +
-    '⚠️ היא לא תמחק כמויות — רק שמות מוצרים בשורות שגויות.\n\n' +
-    'מומלץ להריץ פעם אחת לאחר תיקון ידני של הגיליון.\n\nלהמשיך?',
+      '⚠️ היא לא תמחק כמויות — רק שמות מוצרים בשורות שגויות.\n\n' +
+      'מומלץ להריץ פעם אחת לאחר תיקון ידני של הגיליון.\n\nלהמשיך?',
     ui.ButtonSet.YES_NO
   );
 
   if (confirm !== ui.Button.YES) return;
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sortedEntries = Object.entries(PRODUCT_ROW_MAP).sort((a, b) => a[1].row - b[1].row);
+  invalidateCustomProductsRegistryCache_();
+  const combinedMap = getCombinedProductMap(); // base + fixed, CURRENT correct rows
+  const sortedEntries = Object.entries(combinedMap).sort((a, b) => a[1].row - b[1].row);
   const maxRow = sortedEntries[sortedEntries.length - 1][1].row;
 
-  // Build: productName → correct row per PRODUCT_ROW_MAP
+  // Build: productName → correct CURRENT row (accounts for any fixed
+  // products that have shifted base-catalog rows down)
   const correctRow = {};
-  Object.values(PRODUCT_ROW_MAP).forEach(info => { correctRow[info.name] = info.row; });
+  Object.values(combinedMap).forEach((info) => {
+    correctRow[info.name] = info.row;
+  });
 
   let totalCleared = 0;
   const sheetsReport = [];
@@ -172,7 +237,7 @@ function runCleanupDuplicatesOnAllSheets() {
     });
 
     if (rowsToClear.length > 0) {
-      rowsToClear.forEach(r => {
+      rowsToClear.forEach((r) => {
         sheet.getRange(r, 1, 1, 5).clearContent();
         sheet.getRange(r, 1, 1, 5).setBackground(null);
       });
@@ -185,9 +250,10 @@ function runCleanupDuplicatesOnAllSheets() {
 
   SpreadsheetApp.flush();
 
-  const summary = totalCleared === 0
-    ? 'לא נמצאו שורות כפולות — הגיליונות תקינים.'
-    : `נוקו ${totalCleared} שורות כפולות:\n` + sheetsReport.join('\n');
+  const summary =
+    totalCleared === 0
+      ? 'לא נמצאו שורות כפולות — הגיליונות תקינים.'
+      : `נוקו ${totalCleared} שורות כפולות:\n` + sheetsReport.join('\n');
 
   ui.alert('ניקוי הושלם', summary, ui.ButtonSet.OK);
 }
@@ -196,17 +262,175 @@ function manualUpdateSummarySheet() {
   const ui = SpreadsheetApp.getUi();
   const response = ui.alert(
     'עדכון סיכום חודש',
-    'האם אתה בטוח שברצונך לעדכן את גיליון הסיכום?\n\nפעולה זו תסרוק את כל הגיליונות ותעדכן את הכמויות.',
+    'האם אתה בטוח שברצונך לעדכן את גיליון הסיכום?\n\n' +
+      'פעולה זו תסרוק את כל הגיליונות ותעדכן:\n' +
+      '• כמויות המוצרים הרגילים\n' +
+      '• סה"כ מרוכז לכל מוצר "אחרים" (לפי שם)\n' +
+      '• פירוט מלא של כל רשומת "אחרים" בנפרד (משורה 118 ואילך)',
     ui.ButtonSet.YES_NO
   );
 
   if (response === ui.Button.YES) {
     try {
       updateSummarySheet();
-      ui.alert('הצלחה!', 'גיליון הסיכום עודכן בהצלחה.', ui.ButtonSet.OK);
+      ui.alert(
+        'הצלחה!',
+        'גיליון הסיכום עודכן בהצלחה (כולל הפירוט המלא של "אחרים" משורה 118).',
+        ui.ButtonSet.OK
+      );
     } catch (error) {
       ui.alert('שגיאה', 'אירעה שגיאה בעדכון הגיליון:\n' + error.toString(), ui.ButtonSet.OK);
     }
+  }
+}
+
+// ============================================================================
+// SUMMARY SHEET — highlight products with a missing / zero / invalid price
+//
+// Implemented as a native Google Sheets CONDITIONAL FORMATTING rule, not a
+// one-off script pass — that's the only approach that genuinely satisfies
+// "works for current values and future ones": a CF rule re-evaluates
+// automatically every time a cell's value changes (manual edit, formula
+// recalculation, or a script writing a new "מוצר קבוע" row), with no code
+// needing to run again. Run the menu item ONCE; it stays active in the
+// sheet from then on.
+// ============================================================================
+
+// One row before the אחרים summary header — the highlight rule stops here
+// so it never reaches into that section (which has no price column anyway).
+const PRICE_HIGHLIGHT_LAST_ROW = ACHRIM_LOG_START_ROW - 2;
+
+function applyZeroPriceHighlightRule(summarySheet) {
+  const colMap = getSummaryColumnMap_(summarySheet);
+  const nameCol = columnToLetter_(colMap.name);
+  const priceCol = columnToLetter_(colMap.price);
+
+  const range = summarySheet.getRange(2, colMap.price, PRICE_HIGHLIGHT_LAST_ROW - 1, 1);
+
+  // Highlight only rows that actually have a product name AND whose price
+  // is missing, zero, or an error (#REF!, #N/A, #DIV/0!, etc.) — the name
+  // check keeps this from lighting up blank filler rows beyond whatever
+  // products currently exist, even though the range itself is generous
+  // enough to cover realistic future growth.
+  const formula =
+    '=AND($' +
+    nameCol +
+    '2<>"", OR(ISERROR($' +
+    priceCol +
+    '2), $' +
+    priceCol +
+    '2="", $' +
+    priceCol +
+    '2=0))';
+
+  // Remove any previous rule this function created (matched by the same
+  // formula text) before adding the new one, so re-running this setup is
+  // always safe and never stacks duplicate rules.
+  const existingRules = summarySheet.getConditionalFormatRules();
+  const keptRules = existingRules.filter((rule) => {
+    const condition = rule.getBooleanCondition();
+    if (!condition) return true;
+    const values = condition.getCriteriaValues();
+    return !(values && values[0] === formula);
+  });
+
+  const newRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied(formula)
+    .setBackground('#f4cccc')
+    .setRanges([range])
+    .build();
+
+  summarySheet.setConditionalFormatRules(keptRules.concat([newRule]));
+
+  Logger.log(
+    'Zero/empty/error price highlight rule applied to ' +
+      summarySheet.getName() +
+      '!' +
+      priceCol +
+      '2:' +
+      priceCol +
+      PRICE_HIGHLIGHT_LAST_ROW
+  );
+}
+
+function manualApplyZeroPriceHighlight() {
+  const ui = SpreadsheetApp.getUi();
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const summarySheet = ss.getSheetByName(SUMMARY_SHEET_NAME);
+    if (!summarySheet) {
+      ui.alert('שגיאה', 'לא נמצא גיליון "' + SUMMARY_SHEET_NAME + '".', ui.ButtonSet.OK);
+      return;
+    }
+
+    applyZeroPriceHighlightRule(summarySheet);
+
+    ui.alert(
+      'הצלחה',
+      'כל תא במחיר שהוא 0, ריק, או שגיאה (למשל #REF!) יסומן אוטומטית בצבע — כולל מוצרים שיתווספו בעתיד. ' +
+        'זהו כלל עיצוב מותנה (Conditional Formatting) שנשאר פעיל בגיליון עצמו ולא דורש הרצה חוזרת, ' +
+        'אלא אם רוצים לשנות את הצבע או הטווח.',
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    ui.alert('שגיאה', error.toString(), ui.ButtonSet.OK);
+  }
+}
+
+// Shows exactly what header text exists in row 1 of the summary sheet, and
+// which column getSummaryColumnMap_() auto-detected for each logical field
+// (name/category/price/qty/revenue) — so any mismatch is visible directly,
+// instead of guessing again.
+function diagnoseSummaryColumnMapping() {
+  const ui = SpreadsheetApp.getUi();
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const summarySheet = ss.getSheetByName(SUMMARY_SHEET_NAME);
+    if (!summarySheet) {
+      ui.alert('שגיאה', 'לא נמצא גיליון "' + SUMMARY_SHEET_NAME + '".', ui.ButtonSet.OK);
+      return;
+    }
+
+    const lastCol = Math.max(summarySheet.getLastColumn(), 6);
+    const headerRow = summarySheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    const colMap = getSummaryColumnMap_(summarySheet);
+
+    const headerList = headerRow
+      .map((h, i) => columnToLetter_(i + 1) + ': "' + (h || '(ריק)') + '"')
+      .join('\n');
+
+    const detected =
+      'שם מוצר → עמודה ' +
+      columnToLetter_(colMap.name) +
+      '\n' +
+      'קטגוריה → עמודה ' +
+      (colMap.category ? columnToLetter_(colMap.category) : 'לא זוהתה') +
+      '\n' +
+      'מחיר → עמודה ' +
+      columnToLetter_(colMap.price) +
+      '\n' +
+      'כמות (נוסחת סכום) → עמודה ' +
+      columnToLetter_(colMap.qty) +
+      '\n' +
+      'הכנסה → עמודה ' +
+      columnToLetter_(colMap.revenue);
+
+    ui.alert(
+      'זיהוי עמודות בגיליון הסיכום',
+      'כותרות שורה 1 (A עד ' +
+        columnToLetter_(lastCol) +
+        '):\n' +
+        headerList +
+        '\n\n— זיהוי אוטומטי נוכחי —\n' +
+        detected +
+        '\n\nאם משהו כאן שגוי, שלח/י לי בדיוק מה — למשל "מחיר צריך להיות עמודה E, לא D".',
+      ui.ButtonSet.OK
+    );
+
+    Logger.log('Header row: ' + JSON.stringify(headerRow));
+    Logger.log('Detected column map: ' + JSON.stringify(colMap));
+  } catch (error) {
+    ui.alert('שגיאה', error.toString(), ui.ButtonSet.OK);
   }
 }
 
@@ -228,54 +452,68 @@ function addNewProductsToAllSheets() {
   let sheetsUpdated = 0;
   const warnings = [];
 
-  const sortedProducts = Object.entries(PRODUCT_ROW_MAP).sort((a, b) => a[1].row - b[1].row);
+  // Combined map so any already-registered fixed products (rows 88+) are
+  // preserved/rewritten at their correct row instead of being lumped into
+  // the generic אחרים free-text area below.
+  const sortedProducts = Object.entries(getCombinedProductMap()).sort(
+    (a, b) => a[1].row - b[1].row
+  );
+  const customStartRow = getCustomProductsStartRow();
 
   for (let day = 1; day <= 31; day++) {
     const sheetName = day < 10 ? '0' + day : day.toString();
     const sheet = ss.getSheetByName(sheetName);
     if (!sheet) continue;
 
-    // Step 1: Read existing quantities by product name (old rows 2-88)
+    // Step 1: Read existing quantities by product name (covers base + any
+    // already-registered fixed products)
     const existingQuantities = {};
     const currentLastRow = sheet.getLastRow();
     if (currentLastRow > 1) {
-      const readCount = Math.min(currentLastRow - 1, 87);
-      const values = sheet.getRange(2, 1, readCount, 4).getValues();
-      values.forEach(row => {
-        const name = (row[0] || '').toString().trim();
-        if (name) existingQuantities[name] = { qty: row[2] || 0, notes: row[3] || '' };
-      });
+      const readCount = Math.min(currentLastRow - 1, customStartRow - 2);
+      if (readCount > 0) {
+        const values = sheet.getRange(2, 1, readCount, 4).getValues();
+        values.forEach((row) => {
+          const name = (row[0] || '').toString().trim();
+          if (name) existingQuantities[name] = { qty: row[2] || 0, notes: row[3] || '' };
+        });
+      }
     }
 
-    // Step 2: Preserve custom אחרים products from old rows 82+ (old boundary)
-    const OLD_CUSTOM_START = 82;
+    // Step 2: Preserve free-text אחרים products from the (old) dynamic boundary onward
     const customProducts = [];
-    if (currentLastRow >= OLD_CUSTOM_START) {
-      const customData = sheet.getRange(OLD_CUSTOM_START, 1, currentLastRow - OLD_CUSTOM_START + 1, 4).getValues();
-      customData.forEach(row => {
+    if (currentLastRow >= customStartRow) {
+      const customData = sheet
+        .getRange(customStartRow, 1, currentLastRow - customStartRow + 1, 4)
+        .getValues();
+      customData.forEach((row) => {
         if (row[0] && row[1] === 'אחרים') customProducts.push(row);
       });
     }
 
-    // Step 3: Clear product rows A-D only (preserves col E including E2 submission time)
-    const clearRange = sheet.getRange(2, 1, 87, 4);
+    // Step 3: Clear product rows A-D only, through the dynamic boundary
+    // (preserves col E including E2 submission time)
+    const clearRange = sheet.getRange(2, 1, customStartRow - 2, 4);
     clearRange.clearContent();
     clearRange.setBackground(null);
     clearRange.setFontWeight('normal');
 
-    // Step 4: Write all products in new category order with preserved quantities
+    // Step 4: Write all products (base + registered fixed) in new category
+    // order with preserved quantities
     sortedProducts.forEach(([key, info]) => {
       const existing = existingQuantities[info.name] || { qty: 0, notes: '' };
-      sheet.getRange(info.row, 1, 1, 4).setValues([[info.name, info.category, existing.qty, existing.notes]]);
+      sheet
+        .getRange(info.row, 1, 1, 4)
+        .setValues([[info.name, info.category, existing.qty, existing.notes]]);
       if (existing.qty > 0) {
         sheet.getRange(info.row, 1, 1, 5).setBackground('#FFF2CC');
         sheet.getRange(info.row, 3).setFontWeight('bold');
       }
     });
 
-    // Step 5: Re-write custom products at new row 89+
+    // Step 5: Re-write free-text אחרים products at the dynamic boundary
     if (customProducts.length > 0) {
-      sheet.getRange(CUSTOM_PRODUCTS_START_ROW, 1, customProducts.length, 4).setValues(customProducts);
+      sheet.getRange(customStartRow, 1, customProducts.length, 4).setValues(customProducts);
     }
 
     sheetsUpdated++;
@@ -294,30 +532,46 @@ function updateSummaryForNewProducts(ss) {
   const summarySheet = ss.getSheetByName(SUMMARY_SHEET_NAME);
   if (!summarySheet) return;
 
-  // Read existing prices by product name before clearing
+  const customStartRow = getCustomProductsStartRow();
+  const colMap = getSummaryColumnMap_(summarySheet);
+
+  // Read existing prices by product name before clearing (from whichever
+  // column is actually the price column, detected from headers)
   const existingPrices = {};
   const summaryLastRow = summarySheet.getLastRow();
   if (summaryLastRow > 1) {
-    const priceData = summarySheet.getRange(2, 1, Math.min(summaryLastRow - 1, 87), 2).getValues();
-    priceData.forEach(row => {
-      if (row[0]) existingPrices[row[0].toString().trim()] = row[1];
-    });
+    const priceReadCount = Math.min(summaryLastRow - 1, customStartRow - 2);
+    if (priceReadCount > 0) {
+      const nameCol = summarySheet.getRange(2, colMap.name, priceReadCount, 1).getValues();
+      const priceCol = summarySheet.getRange(2, colMap.price, priceReadCount, 1).getValues();
+      nameCol.forEach((row, i) => {
+        if (row[0]) existingPrices[row[0].toString().trim()] = priceCol[i][0];
+      });
+    }
   }
 
-  // Clear rows 2-88 cols A-C only
-  summarySheet.getRange(2, 1, 87, 3).clearContent();
+  // Clear base + registered-fixed rows across every relevant column
+  const maxCol = Math.max(
+    colMap.name,
+    colMap.category || 0,
+    colMap.price,
+    colMap.qty,
+    colMap.revenue
+  );
+  summarySheet.getRange(2, 1, customStartRow - 2, maxCol).clearContent();
 
-  // Write all products with preserved prices and rebuilt SUM formulas
-  Object.entries(PRODUCT_ROW_MAP)
+  // Write all products (base + registered fixed) with preserved prices and
+  // rebuilt SUM formulas, into whichever columns the header row actually
+  // indicates (see writeSummaryProductRow_ in CustomProducts.gs)
+  Object.entries(getCombinedProductMap())
     .sort((a, b) => a[1].row - b[1].row)
     .forEach(([key, info]) => {
-      const price = existingPrices[info.name] !== undefined ? existingPrices[info.name] : (info.price || 0);
-      summarySheet.getRange(info.row, 1).setValue(info.name);
-      summarySheet.getRange(info.row, 2).setValue(price);
-      summarySheet.getRange(info.row, 3).setFormula(buildDaySumFormula(info.row));
+      const price =
+        existingPrices[info.name] !== undefined ? existingPrices[info.name] : info.price || 0;
+      writeSummaryProductRow_(summarySheet, info.row, info.name, info.category, price);
     });
 
-  Logger.log('Summary sheet rebuilt with correct row numbers');
+  Logger.log('Summary sheet rebuilt with correct row numbers and columns');
 }
 
 function manualAddNewProducts() {
@@ -326,10 +580,10 @@ function manualAddNewProducts() {
   const response = ui.alert(
     'ארגון מחדש של מוצרים בכל הגיליונות',
     'פעולה זו תסדר מחדש את כל המוצרים לפי קטגוריה בגיליונות 01–31 ובגיליון הסיכום.\n\n' +
-    '• 7 מוצרים חדשים יוכנסו בתוך הקטגוריה המתאימה\n' +
-    '• כמויות קיימות (כולל ימים 01–17) יישמרו לפי שם מוצר\n' +
-    '• גיליון הסיכום יבנה מחדש עם נוסחאות מעודכנות\n\n' +
-    '⚠️ פעולה זו אינה הפיכה. האם להמשיך?',
+      '• 7 מוצרים חדשים יוכנסו בתוך הקטגוריה המתאימה\n' +
+      '• כמויות קיימות (כולל ימים 01–17) יישמרו לפי שם מוצר\n' +
+      '• גיליון הסיכום יבנה מחדש עם נוסחאות מעודכנות\n\n' +
+      '⚠️ פעולה זו אינה הפיכה. האם להמשיך?',
     ui.ButtonSet.YES_NO
   );
 
@@ -337,7 +591,11 @@ function manualAddNewProducts() {
 
   try {
     const result = addNewProductsToAllSheets();
-    ui.alert('הצלחה', `✅ הפעולה הושלמה!\n${result.sheetsUpdated} גיליונות עודכנו.\nגיליון הסיכום נבנה מחדש.`, ui.ButtonSet.OK);
+    ui.alert(
+      'הצלחה',
+      `✅ הפעולה הושלמה!\n${result.sheetsUpdated} גיליונות עודכנו.\nגיליון הסיכום נבנה מחדש.`,
+      ui.ButtonSet.OK
+    );
   } catch (error) {
     ui.alert('שגיאה', 'אירעה שגיאה: ' + error.toString(), ui.ButtonSet.OK);
   }
@@ -364,9 +622,9 @@ function manualRestoreFromBackup() {
   const response = ui.alert(
     'שחזור נתונים מגיבוי',
     `נמצאו ${backupFiles.length} קבצי גיבוי. השחזור ישתמש בגיבוי האחרון:\n\n` +
-    `📁 "${latest.name}"\n📅 ${latest.dateStr}\n\n` +
-    `כל הגיבויים:\n${allNames}\n\n` +
-    '⚠️ פעולה זו תדרוס את כל הנתונים הנוכחיים. האם להמשיך?',
+      `📁 "${latest.name}"\n📅 ${latest.dateStr}\n\n` +
+      `כל הגיבויים:\n${allNames}\n\n` +
+      '⚠️ פעולה זו תדרוס את כל הנתונים הנוכחיים. האם להמשיך?',
     ui.ButtonSet.YES_NO
   );
 
@@ -377,9 +635,9 @@ function manualRestoreFromBackup() {
     ui.alert(
       'הצלחה',
       `✅ השחזור הושלם בהצלחה!\n\n` +
-      `• ${result.sheetsRestored} גיליונות יום שוחזרו\n` +
-      `• גיליון הסיכום נבנה מחדש\n` +
-      `• גיבוי ששימש: "${latest.name}"`,
+        `• ${result.sheetsRestored} גיליונות יום שוחזרו\n` +
+        `• גיליון הסיכום נבנה מחדש\n` +
+        `• גיבוי ששימש: "${latest.name}"`,
       ui.ButtonSet.OK
     );
   } catch (error) {
@@ -400,7 +658,7 @@ function listBackupFiles() {
       id: file.getId(),
       name: file.getName(),
       date: modified,
-      dateStr: Utilities.formatDate(modified, 'Asia/Jerusalem', 'dd/MM/yyyy HH:mm')
+      dateStr: Utilities.formatDate(modified, 'Asia/Jerusalem', 'dd/MM/yyyy HH:mm'),
     });
   }
 
@@ -413,9 +671,13 @@ function restoreFromBackupById(backupSpreadsheetId) {
   const backupSS = SpreadsheetApp.openById(backupSpreadsheetId);
   const mainSS = SpreadsheetApp.openById(SPREADSHEET_ID);
 
-  const sortedProducts = Object.entries(PRODUCT_ROW_MAP).sort((a, b) => a[1].row - b[1].row);
-  // Build a set of regular product names for custom-product detection
-  const regularProductNames = new Set(sortedProducts.map(([, info]) => info.name));
+  // Combined map (base catalog + currently-registered fixed products) — a
+  // restore recovers quantities, not schema, so it always targets the
+  // CURRENT product structure, including anything added via "מוצר קבוע".
+  const sortedProducts = Object.entries(getCombinedProductMap()).sort(
+    (a, b) => a[1].row - b[1].row
+  );
+  const customStartRow = getCustomProductsStartRow();
 
   let sheetsRestored = 0;
 
@@ -435,10 +697,10 @@ function restoreFromBackupById(backupSpreadsheetId) {
       const bLastRow = backupSheet.getLastRow();
       if (bLastRow > 1) {
         const bData = backupSheet.getRange(2, 1, bLastRow - 1, 4).getValues();
-        bData.forEach(row => {
+        bData.forEach((row) => {
           const name = (row[0] || '').toString().trim();
           if (!name) return;
-          const qty = (row[2] !== '' && row[2] !== null) ? Number(row[2]) : 0;
+          const qty = row[2] !== '' && row[2] !== null ? Number(row[2]) : 0;
           const notes = (row[3] || '').toString();
           if (row[1] === 'אחרים') {
             customProductRows.push([name, 'אחרים', qty, notes]);
@@ -450,15 +712,18 @@ function restoreFromBackupById(backupSpreadsheetId) {
       }
     }
 
-    // Clear entire product area A–D (rows 2 to max 88 + any custom rows)
+    // Clear entire product area A–D (rows 2 through the dynamic boundary + any custom rows)
     const mainLastRow = mainSheet.getLastRow();
-    const clearRows = Math.max(87, mainLastRow > 1 ? mainLastRow - 1 : 87);
+    const clearRows = Math.max(
+      customStartRow - 2,
+      mainLastRow > 1 ? mainLastRow - 1 : customStartRow - 2
+    );
     const clearRange = mainSheet.getRange(2, 1, clearRows, 4);
     clearRange.clearContent();
     clearRange.setBackground(null);
     clearRange.setFontWeight('normal');
 
-    // Write all 88 regular products in new category order
+    // Write all regular + registered-fixed products in category order
     // Build batch arrays for efficiency
     const valuesData = sortedProducts.map(([, info]) => {
       const qty = backupQty[info.name] !== undefined ? backupQty[info.name] : 0;
@@ -474,9 +739,10 @@ function restoreFromBackupById(backupSpreadsheetId) {
       }
     });
 
-    // Re-write custom אחרים products at new row 89+
+    // Re-write free-text אחרים products at the dynamic boundary
     if (customProductRows.length > 0) {
-      mainSheet.getRange(CUSTOM_PRODUCTS_START_ROW, 1, customProductRows.length, 4)
+      mainSheet
+        .getRange(customStartRow, 1, customProductRows.length, 4)
         .setValues(customProductRows);
     }
 
@@ -496,66 +762,65 @@ function rebuildSummaryFromBackup(backupSS, mainSS, sortedProducts) {
   const mainSummary = mainSS.getSheetByName(SUMMARY_SHEET_NAME);
   if (!mainSummary) return;
 
-  // Read prices from backup summary (by product name → price)
-  const backupPrices = {};
   const backupSummary = backupSS.getSheetByName(SUMMARY_SHEET_NAME);
+  const backupColMap = backupSummary ? getSummaryColumnMap_(backupSummary) : null;
+
+  // Read prices from backup summary (by product name → price), using
+  // whichever column the backup's OWN header row indicates is price
+  const backupPrices = {};
   if (backupSummary) {
     const bLastRow = backupSummary.getLastRow();
     if (bLastRow > 1) {
-      // Read cols A–B (name, price)
-      backupSummary.getRange(2, 1, bLastRow - 1, 2).getValues().forEach(row => {
+      const nameCol = backupSummary.getRange(2, backupColMap.name, bLastRow - 1, 1).getValues();
+      const priceCol = backupSummary.getRange(2, backupColMap.price, bLastRow - 1, 1).getValues();
+      nameCol.forEach((row, i) => {
         const name = (row[0] || '').toString().trim();
-        if (name && row[1] !== '' && row[1] !== null) {
-          backupPrices[name] = Number(row[1]);
+        const priceVal = priceCol[i][0];
+        if (name && priceVal !== '' && priceVal !== null) {
+          backupPrices[name] = Number(priceVal);
         }
       });
     }
   }
 
+  const customStartRow = getCustomProductsStartRow();
+
   // Determine how many columns the current summary has so we clear everything
   const mainLastCol = Math.max(mainSummary.getLastColumn(), 4);
 
-  // Clear ALL columns for product rows 2–88 (removes stale formulas/values in any column)
-  mainSummary.getRange(2, 1, 87, mainLastCol).clearContent();
+  // Clear ALL columns for product rows (base + registered-fixed), through the
+  // dynamic boundary (removes stale formulas/values in any column)
+  mainSummary.getRange(2, 1, customStartRow - 2, mainLastCol).clearContent();
 
-  // Build batch data arrays
-  const namePrice = [];   // cols A–B: name, price
-  const qtyFormulas = []; // col C: SUM formula for total quantity
-  const revFormulas = []; // col D: revenue = price × total qty
-
+  // Write each product to its specific row (not contiguous index) — covers
+  // both the base catalog and any registered fixed products, into whichever
+  // columns THIS spreadsheet's own header row indicates
   sortedProducts.forEach(([key, info]) => {
-    const price = backupPrices[info.name] !== undefined ? backupPrices[info.name] : (info.price || 0);
-    namePrice.push([info.name, price]);
-    qtyFormulas.push([buildDaySumFormula(info.row)]);
-    revFormulas.push([`=IFERROR(B${info.row}*C${info.row},0)`]);
+    const price = backupPrices[info.name] !== undefined ? backupPrices[info.name] : info.price || 0;
+    writeSummaryProductRow_(mainSummary, info.row, info.name, info.category, price);
   });
 
-  // Write all rows at once using the sorted row range (rows 2–88 correspond to sortedProducts)
-  // sortedProducts is already sorted by row, so indices 0–87 → rows 2–89... no, rows are 2–88
-  // We write each product to its specific row (not contiguous index)
-  sortedProducts.forEach(([key, info], i) => {
-    mainSummary.getRange(info.row, 1, 1, 2).setValues([namePrice[i]]);
-    mainSummary.getRange(info.row, 3).setFormula(qtyFormulas[i][0]);
-    mainSummary.getRange(info.row, 4).setFormula(revFormulas[i][0]);
-  });
-
-  Logger.log('Summary rebuilt: ' + sortedProducts.length + ' products, prices from backup, new SUM formulas');
+  Logger.log(
+    'Summary rebuilt: ' + sortedProducts.length + ' products, prices from backup, new SUM formulas'
+  );
 }
 
 function handleGetProductsList() {
   try {
-    const products = [];
+    const combinedMap = getCombinedProductMap(); // base + fixed, CURRENT correct rows
+    const products = Object.entries(combinedMap).map(([key, info]) => ({
+      key: key,
+      name: info.name,
+      category: info.category,
+      row: info.row,
+      isFixedCustom: !!info.isFixedCustom,
+    }));
 
-    Object.entries(PRODUCT_ROW_MAP).forEach(([key, info]) => {
-      products.push({
-        key: key,
-        name: info.name,
-        category: info.category,
-        row: info.row
-      });
+    return createJsonResponse({
+      success: true,
+      products: products,
+      fixedProductCategories: ALLOWED_FIXED_PRODUCT_CATEGORIES,
     });
-
-    return createJsonResponse({ success: true, products: products });
   } catch (error) {
     Logger.log('ERROR in handleGetProductsList: ' + error.toString());
     return createJsonResponse({ success: false, error: error.toString() });
@@ -563,9 +828,9 @@ function handleGetProductsList() {
 }
 
 function createJsonResponse(data) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(
+    ContentService.MimeType.JSON
+  );
 }
 
 // ============================================================================
@@ -627,7 +892,6 @@ function handleDeliverySubmission(data) {
     const response = { success: true, mode: 'order', message: 'Delivery recorded', emailSent: emailSent };
     rememberSubmission(data.submission_id, response); // [ORDER-UPDATES]
     return createJsonResponse(response);
-
   } catch (error) {
     Logger.log('ERROR in handleDeliverySubmission: ' + error.toString());
     throw error;
@@ -669,7 +933,9 @@ function handleConfirmation(data) {
 
     const currentStatus = sheet.getRange(2, COLUMNS.CONFIRMATION_STATUS).getValue();
     if (currentStatus === 'confirmed' || currentStatus === 'confirmed_with_changes') {
-      Logger.log('RE-CONFIRMATION detected for: ' + submissionId + ' - Previous status: ' + currentStatus);
+      Logger.log(
+        'RE-CONFIRMATION detected for: ' + submissionId + ' - Previous status: ' + currentStatus
+      );
     }
 
     Logger.log('Processing confirmation...');
@@ -677,21 +943,32 @@ function handleConfirmation(data) {
     const originalQuantities = getOriginalQuantities(sheet);
     Logger.log('Original quantities captured: ' + JSON.stringify(originalQuantities));
 
-    const changedProducts = processConfirmation(sheet, confirmedProducts, fullConfirmation, submissionId, originalQuantities);
+    const changedProducts = processConfirmation(
+      sheet,
+      confirmedProducts,
+      fullConfirmation,
+      submissionId,
+      originalQuantities
+    );
     Logger.log('Confirmation processed. Changed products: ' + changedProducts.length);
 
     SpreadsheetApp.flush();
 
     Logger.log('Sending manager confirmation email...');
-    const emailSent = sendManagerEmailWithRetry(sheet, day, fullConfirmation, confirmedProducts, changedProducts);
+    const emailSent = sendManagerEmailWithRetry(
+      sheet,
+      day,
+      fullConfirmation,
+      confirmedProducts,
+      changedProducts
+    );
     Logger.log('Manager email sent status: ' + emailSent);
 
     return createJsonResponse({
       success: true,
       message: 'Confirmation processed',
-      emailSent: emailSent
+      emailSent: emailSent,
     });
-
   } catch (error) {
     Logger.log('ERROR in handleConfirmation: ' + error.toString());
     throw error;
@@ -715,12 +992,12 @@ function getIsraeliTime() {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false
+    hour12: false,
   });
 
   const parts = formatter.formatToParts(now);
   const partsMap = {};
-  parts.forEach(part => {
+  parts.forEach((part) => {
     partsMap[part.type] = part.value;
   });
 
@@ -753,7 +1030,7 @@ function getDeliveryData(sheet, submissionId) {
     confirmation_status: generalInfo[4] || 'pending',
     confirmation_time: generalInfo[5] || '',
     submission_time: submissionTime,
-    products: products
+    products: products,
   };
 }
 
@@ -766,17 +1043,18 @@ function buildNameToRowIndex(sheet) {
   if (lastRow < 2) return {};
   const col = sheet.getRange(2, COLUMNS.PRODUCT_NAME, lastRow - 1, 1).getValues();
   const index = {};
-  col.forEach(function(row, i) {
+  col.forEach(function (row, i) {
     const name = String(row[0]).trim();
     if (name && !index[name]) index[name] = i + 2;
   });
   return index;
 }
 
-// Build nameToKey reverse-lookup from PRODUCT_ROW_MAP (used in read functions)
+// Build nameToKey reverse-lookup from the combined product map (base catalog
+// + permanently-registered fixed products) — used in read functions.
 function buildNameToKeyIndex() {
   const nameToKey = {};
-  Object.entries(PRODUCT_ROW_MAP).forEach(function([key, info]) {
+  Object.entries(getCombinedProductMap()).forEach(function ([key, info]) {
     nameToKey[info.name] = key;
   });
   return nameToKey;
@@ -791,7 +1069,7 @@ function getProductsFromSheet(sheet) {
   const data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
   const seenKeys = new Set();
 
-  data.forEach(function(row, idx) {
+  data.forEach(function (row, idx) {
     const name = String(row[0]).trim();
     const category = row[1];
     const quantity = parseInt(row[2]) || 0;
@@ -805,16 +1083,21 @@ function getProductsFromSheet(sheet) {
       // Regular product — skip if we already counted it (duplicate row)
       if (!seenKeys.has(key)) {
         seenKeys.add(key);
-        products.push({ key: key, name: name, category: category, quantity: quantity, notes: notes });
+        products.push({
+          key: key,
+          name: name,
+          category: category,
+          quantity: quantity,
+          notes: notes,
+        });
       }
-    } else if (actualRow >= CUSTOM_PRODUCTS_START_ROW) {
-      // Custom (אחרים) product
+    } else if (actualRow >= getCustomProductsStartRow()) {
       products.push({
         key: 'custom_' + idx,
         name: name,
         category: String(category).trim() || 'אחרים',
         quantity: quantity,
-        notes: notes
+        notes: notes,
       });
     }
   });
@@ -832,7 +1115,7 @@ function getOriginalQuantities(sheet) {
   const data = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
   const seenKeys = new Set();
 
-  data.forEach(function(row, idx) {
+  data.forEach(function (row, idx) {
     const name = String(row[0]).trim();
     const quantity = parseInt(row[2]) || 0;
     const actualRow = idx + 2;
@@ -843,7 +1126,7 @@ function getOriginalQuantities(sheet) {
     if (key && !seenKeys.has(key)) {
       seenKeys.add(key);
       originalQuantities[key] = { name: name, quantity: quantity };
-    } else if (!key && actualRow >= CUSTOM_PRODUCTS_START_ROW) {
+    } else if (!key && actualRow >= getCustomProductsStartRow()) {
       originalQuantities['custom_' + name] = { name: name, quantity: quantity };
     }
   });
@@ -856,20 +1139,25 @@ function getOriginalQuantities(sheet) {
 // ============================================================================
 
 /**
- * Scans rows 2–88 and clears any row where a known product name sits at a row
- * that disagrees with PRODUCT_ROW_MAP. This fixes structural corruption left by
- * the earlier addNewProductsToAllSheets() run without touching correct rows.
+ * Scans the whole product area and clears any row where a known product
+ * name sits at a row that disagrees with its CURRENT correct row (base
+ * catalog + fixed products combined, via getCombinedProductMap() —
+ * fixed-product insertions can legitimately shift base-catalog rows down,
+ * so this must never compare against the static PRODUCT_ROW_MAP alone).
  */
 function cleanupMisplacedProductRows(sheet) {
-  const sortedEntries = Object.entries(PRODUCT_ROW_MAP).sort((a, b) => a[1].row - b[1].row);
+  const combinedMap = getCombinedProductMap();
+  const sortedEntries = Object.entries(combinedMap).sort((a, b) => a[1].row - b[1].row);
   const maxRow = sortedEntries[sortedEntries.length - 1][1].row;
 
   // One batch read of all product rows
   const allData = sheet.getRange(2, 1, maxRow - 1, 4).getValues();
 
-  // Build correct-row lookup: productName → expected row per PRODUCT_ROW_MAP
+  // Build correct-row lookup: productName → expected CURRENT row
   const correctRow = {};
-  Object.values(PRODUCT_ROW_MAP).forEach(info => { correctRow[info.name] = info.row; });
+  Object.values(combinedMap).forEach((info) => {
+    correctRow[info.name] = info.row;
+  });
 
   const rowsToClear = [];
   allData.forEach((row, idx) => {
@@ -882,7 +1170,7 @@ function cleanupMisplacedProductRows(sheet) {
 
   if (rowsToClear.length > 0) {
     Logger.log('cleanupMisplacedProductRows: clearing rows ' + rowsToClear.join(', '));
-    rowsToClear.forEach(r => {
+    rowsToClear.forEach((r) => {
       sheet.getRange(r, 1, 1, 5).clearContent();
       sheet.getRange(r, 1, 1, 5).setBackground(null);
     });
@@ -919,26 +1207,30 @@ function updateDeliveryData(sheet, data, submissionTime) {
     data.filler_name || '',
     data.submission_id || '',
     'pending',
-    ''
+    '',
   ];
   sheet.getRange(2, COLUMNS.DATE, 1, 6).setValues([generalInfoRow]);
 
-  const regularProducts = data.products.filter(p => !p.key.startsWith('custom_'));
-  const customProducts = data.products.filter(p => p.key.startsWith('custom_'));
+  const regularProducts = data.products.filter((p) => !p.key.startsWith('custom_'));
+  const customProducts = data.products.filter((p) => p.key.startsWith('custom_'));
 
   // Build a name→actualRow index from the sheet once — this makes writes
   // resilient to row-number mismatches: we always write to the row where
   // the product name actually lives, not to a hardcoded position.
   const nameToRow = buildNameToRowIndex(sheet);
+  const combinedProductMap = getCombinedProductMap();
+  const customStartRow = getCustomProductsStartRow();
 
   Logger.log('Processing ' + regularProducts.length + ' regular products');
-  regularProducts.forEach(function(product) {
-    const productInfo = PRODUCT_ROW_MAP[product.key];
+  regularProducts.forEach(function (product) {
+    const productInfo = combinedProductMap[product.key];
     if (!productInfo) return;
 
     const row = nameToRow[productInfo.name];
-    if (!row || row >= CUSTOM_PRODUCTS_START_ROW) {
-      Logger.log('Product not found in sheet column A: ' + productInfo.name + ' (key: ' + product.key + ')');
+    if (!row || row >= customStartRow) {
+      Logger.log(
+        'Product not found in sheet column A: ' + productInfo.name + ' (key: ' + product.key + ')'
+      );
       return;
     }
 
@@ -948,7 +1240,8 @@ function updateDeliveryData(sheet, data, submissionTime) {
 
     const currentNotes = sheet.getRange(row, COLUMNS.NOTES).getValue() || '';
     const newNotes = product.notes || '';
-    const finalNotes = currentNotes && newNotes ? currentNotes + ' | ' + newNotes : currentNotes || newNotes;
+    const finalNotes =
+      currentNotes && newNotes ? currentNotes + ' | ' + newNotes : currentNotes || newNotes;
 
     sheet.getRange(row, COLUMNS.QUANTITY).setValue(updatedQuantity);
     sheet.getRange(row, COLUMNS.NOTES).setValue(finalNotes);
@@ -963,31 +1256,37 @@ function updateDeliveryData(sheet, data, submissionTime) {
     Logger.log('Processing ' + customProducts.length + ' custom products');
 
     // Batch-read custom range once to avoid per-row API calls
-    let customLastRow = Math.max(sheet.getLastRow(), CUSTOM_PRODUCTS_START_ROW - 1);
+    let customLastRow = Math.max(sheet.getLastRow(), customStartRow - 1);
     const customNameToRow = {};
-    if (customLastRow >= CUSTOM_PRODUCTS_START_ROW) {
-      const customCount = customLastRow - CUSTOM_PRODUCTS_START_ROW + 1;
-      const customNames = sheet.getRange(CUSTOM_PRODUCTS_START_ROW, COLUMNS.PRODUCT_NAME, customCount, 1).getValues();
-      customNames.forEach(function(row, i) {
+    if (customLastRow >= customStartRow) {
+      const customCount = customLastRow - customStartRow + 1;
+      const customNames = sheet
+        .getRange(customStartRow, COLUMNS.PRODUCT_NAME, customCount, 1)
+        .getValues();
+      customNames.forEach(function (row, i) {
         const name = String(row[0]).trim();
-        if (name && !customNameToRow[name]) customNameToRow[name] = CUSTOM_PRODUCTS_START_ROW + i;
+        if (name && !customNameToRow[name]) customNameToRow[name] = customStartRow + i;
       });
     }
 
-    customProducts.forEach(function(product) {
+    customProducts.forEach(function (product) {
       const productName = product.name;
       const foundRow = customNameToRow[productName] || null;
 
       if (foundRow) {
-        const currentQuantity = parseInt(sheet.getRange(foundRow, COLUMNS.QUANTITY).getValue()) || 0;
+        const currentQuantity =
+          parseInt(sheet.getRange(foundRow, COLUMNS.QUANTITY).getValue()) || 0;
         const newQuantity = parseInt(product.quantity) || 0;
         const updatedQuantity = currentQuantity + newQuantity;
 
         const currentNotes = sheet.getRange(foundRow, COLUMNS.NOTES).getValue() || '';
         const newNotes = product.notes || '';
-        const finalNotes = currentNotes && newNotes ? currentNotes + ' | ' + newNotes : currentNotes || newNotes;
+        const finalNotes =
+          currentNotes && newNotes ? currentNotes + ' | ' + newNotes : currentNotes || newNotes;
 
-        sheet.getRange(foundRow, COLUMNS.PRODUCT_NAME, 1, 4).setValues([[productName, 'אחרים', updatedQuantity, finalNotes]]);
+        sheet
+          .getRange(foundRow, COLUMNS.PRODUCT_NAME, 1, 4)
+          .setValues([[productName, 'אחרים', updatedQuantity, finalNotes]]);
         if (updatedQuantity > 0) {
           sheet.getRange(foundRow, COLUMNS.PRODUCT_NAME, 1, 5).setBackground('#FFE6CC');
           sheet.getRange(foundRow, COLUMNS.QUANTITY).setFontWeight('bold');
@@ -996,7 +1295,9 @@ function updateDeliveryData(sheet, data, submissionTime) {
         customLastRow++;
         customNameToRow[productName] = customLastRow;
         const quantity = parseInt(product.quantity) || 0;
-        sheet.getRange(customLastRow, COLUMNS.PRODUCT_NAME, 1, 4).setValues([[productName, 'אחרים', quantity, product.notes || '']]);
+        sheet
+          .getRange(customLastRow, COLUMNS.PRODUCT_NAME, 1, 4)
+          .setValues([[productName, 'אחרים', quantity, product.notes || '']]);
         if (quantity > 0) {
           sheet.getRange(customLastRow, COLUMNS.PRODUCT_NAME, 1, 5).setBackground('#FFE6CC');
           sheet.getRange(customLastRow, COLUMNS.QUANTITY).setFontWeight('bold');
@@ -1016,7 +1317,13 @@ function updateDeliveryData(sheet, data, submissionTime) {
 // CONFIRMATION PROCESSING
 // ============================================================================
 
-function processConfirmation(sheet, confirmedProducts, fullConfirmation, submissionId, originalQuantities) {
+function processConfirmation(
+  sheet,
+  confirmedProducts,
+  fullConfirmation,
+  submissionId,
+  originalQuantities
+) {
   const currentTime = getIsraeliTime();
   Logger.log('Processing confirmation at: ' + currentTime);
 
@@ -1035,7 +1342,6 @@ function processConfirmation(sheet, confirmedProducts, fullConfirmation, submiss
     }
 
     Logger.log('Full confirmation processed - no changes made');
-
   } else {
     sheet.getRange(2, COLUMNS.CONFIRMATION_STATUS).setValue('confirmed_with_changes');
     const confirmCell = sheet.getRange(2, COLUMNS.CONFIRMATION_TIME);
@@ -1048,12 +1354,16 @@ function processConfirmation(sheet, confirmedProducts, fullConfirmation, submiss
       sheet.getRange(2, 1, lastRow - 1, 5).setBackground('#d4edda');
     }
 
-    Logger.log('Processing ' + confirmedProducts.length + ' confirmed products with potential changes');
+    Logger.log(
+      'Processing ' + confirmedProducts.length + ' confirmed products with potential changes'
+    );
 
     // Build name→row index once for all writes in this confirmation
     const nameToRow = buildNameToRowIndex(sheet);
+    const combinedProductMap = getCombinedProductMap();
+    const customStartRow = getCustomProductsStartRow();
 
-    confirmedProducts.forEach(function(product) {
+    confirmedProducts.forEach(function (product) {
       const confirmedQuantity = parseInt(product.quantity) || 0;
 
       let comparisonKey = product.key;
@@ -1064,33 +1374,56 @@ function processConfirmation(sheet, confirmedProducts, fullConfirmation, submiss
       const originalData = originalQuantities[comparisonKey];
       const originalQuantity = originalData ? originalData.quantity : 0;
 
-      Logger.log('Product: ' + product.name + ', Original: ' + originalQuantity + ', Confirmed: ' + confirmedQuantity);
+      Logger.log(
+        'Product: ' +
+          product.name +
+          ', Original: ' +
+          originalQuantity +
+          ', Confirmed: ' +
+          confirmedQuantity
+      );
 
       if (originalQuantity !== confirmedQuantity) {
-        Logger.log('CHANGE DETECTED: ' + product.name + ' changed from ' + originalQuantity + ' to ' + confirmedQuantity);
+        Logger.log(
+          'CHANGE DETECTED: ' +
+            product.name +
+            ' changed from ' +
+            originalQuantity +
+            ' to ' +
+            confirmedQuantity
+        );
 
         changedProducts.push({
           key: product.key,
           name: product.name,
-          category: product.category || (PRODUCT_ROW_MAP[product.key] ? PRODUCT_ROW_MAP[product.key].category : 'אחרים'),
+          category:
+            product.category ||
+            (combinedProductMap[product.key] ? combinedProductMap[product.key].category : 'אחרים'),
           originalQuantity: originalQuantity,
-          confirmedQuantity: confirmedQuantity
+          confirmedQuantity: confirmedQuantity,
         });
 
         if (product.key.startsWith('custom_')) {
-          updateCustomProductConfirmation(sheet, product, currentTime, originalQuantity, confirmedQuantity);
+          updateCustomProductConfirmation(
+            sheet,
+            product,
+            currentTime,
+            originalQuantity,
+            confirmedQuantity
+          );
         } else {
-          const productInfo = PRODUCT_ROW_MAP[product.key];
+          const productInfo = combinedProductMap[product.key];
           if (productInfo) {
             // Use name-based row lookup — same pattern as updateDeliveryData
             const row = nameToRow[productInfo.name];
-            if (!row || row >= CUSTOM_PRODUCTS_START_ROW) {
+            if (!row || row >= customStartRow) {
               Logger.log('Confirmation: product not found in sheet: ' + productInfo.name);
             } else {
               sheet.getRange(row, COLUMNS.QUANTITY).setValue(confirmedQuantity);
 
               const currentNotes = sheet.getRange(row, COLUMNS.NOTES).getValue() || '';
-              const changeNote = 'לפני שינוי: ' + originalQuantity + ', לאחר שינוי: ' + confirmedQuantity;
+              const changeNote =
+                'לפני שינוי: ' + originalQuantity + ', לאחר שינוי: ' + confirmedQuantity;
               const finalNotes = currentNotes ? currentNotes + ' | ' + changeNote : changeNote;
               sheet.getRange(row, COLUMNS.NOTES).setValue(finalNotes);
               sheet.getRange(row, COLUMNS.LAST_UPDATED).setValue(currentTime);
@@ -1106,21 +1439,29 @@ function processConfirmation(sheet, confirmedProducts, fullConfirmation, submiss
       }
     });
 
-    Logger.log(`Partial confirmation processed. ${changedProducts.length} products actually changed`);
+    Logger.log(
+      `Partial confirmation processed. ${changedProducts.length} products actually changed`
+    );
   }
 
   SpreadsheetApp.flush();
   return changedProducts;
 }
 
-function updateCustomProductConfirmation(sheet, product, currentTime, originalQuantity, confirmedQuantity) {
+function updateCustomProductConfirmation(
+  sheet,
+  product,
+  currentTime,
+  originalQuantity,
+  confirmedQuantity
+) {
   const productName = product.name;
   const productCategory = product.category || 'אחרים';
   const lastRow = sheet.getLastRow();
   let foundRow = null;
 
   // Search for existing custom product
-  for (let row = CUSTOM_PRODUCTS_START_ROW; row <= lastRow; row++) {
+  for (let row = getCustomProductsStartRow(); row <= lastRow; row++) {
     const existingName = sheet.getRange(row, COLUMNS.PRODUCT_NAME).getValue();
     if (existingName === productName) {
       foundRow = row;
@@ -1174,8 +1515,11 @@ function updateSummarySheet() {
       return;
     }
 
-    // Consolidate and update אחרים products
-    updateCustomProductsInSummary(summarySheet, ss);
+    // אחרים summary (aggregated by name, fixed row 118+) — works
+    // retroactively too: re-running this (e.g. via the "עדכון סיכום חודש"
+    // menu item) rebuilds it from whatever is currently in the day-tabs,
+    // so no separate one-time migration function is needed.
+    updateAchrimDetailedLog(summarySheet, ss);
 
     SpreadsheetApp.flush();
     Logger.log('Summary sheet updated successfully');
@@ -1184,63 +1528,107 @@ function updateSummarySheet() {
   }
 }
 
-function updateCustomProductsInSummary(summarySheet, ss) {
-  Logger.log('Consolidating אחרים products across all sheets...');
+// ============================================================================
+// "אחרים" SUMMARY — one row per unique product name, aggregated (summed)
+// across every day-tab, at a FIXED row (118). Replaces two earlier,
+// separate things that were confusing side by side: an aggregated total
+// that used to live at the dynamic fixed-product boundary (right after row
+// 87 today, since no מוצר קבוע is registered yet), and a detailed
+// per-occurrence log (with day + notes columns) at row 118. Both are now
+// this one simple list: שם מוצר | קטגוריה ("אחרים") | כמות (total).
+// ============================================================================
 
-  const customProductsMap = {}; // {productName: totalQuantity}
+// Clears the אחרים summary's block (header + a generous data range),
+// without touching anything else. Exposed separately so add/delete flows
+// for "מוצר קבוע" (CustomProducts.gs) can pre-clear this block BEFORE
+// inserting/deleting a row above it — see the ROW CONSISTENCY note below
+// for why that matters.
+function clearAchrimDetailedLogArea(summarySheet) {
+  const CLEAR_ROW_COUNT = 500;
+  summarySheet.getRange(ACHRIM_LOG_START_ROW - 1, 1, CLEAR_ROW_COUNT, 5).clearContent();
+}
 
-  // Scan all sheets for אחרים products starting from custom products row
-  const allSheets = ss.getSheets();
-  allSheets.forEach((sheet, sheetIndex) => {
-    // Skip summary sheet itself
-    if (sheet.getName() === SUMMARY_SHEET_NAME) {
-      return;
-    }
+// Clears any leftover data from the OLD dynamic-boundary אחרים aggregation
+// (the row-88-ish section this feature replaces), so nothing stale lingers
+// between the fixed-product area and the row-118 report.
+function clearLegacyDynamicAchrimArea(summarySheet) {
+  const dynamicStart = getCustomProductsStartRow();
+  const clearThroughRow = ACHRIM_LOG_START_ROW - 2; // up to (not including) the row-118 header at 117
+  if (clearThroughRow >= dynamicStart) {
+    summarySheet.getRange(dynamicStart, 1, clearThroughRow - dynamicStart + 1, 3).clearContent();
+  }
+}
+
+function updateAchrimDetailedLog(summarySheet, ss) {
+  Logger.log('Building אחרים summary at row ' + ACHRIM_LOG_START_ROW + '...');
+
+  // Clean up any leftover data from the OLD dynamic-boundary אחרים
+  // aggregation this feature replaces.
+  clearLegacyDynamicAchrimArea(summarySheet);
+
+  // Defensive check: warn (don't block) if the dynamic fixed-product area
+  // has grown enough to reach this fixed row — that would mean the two
+  // sections are about to collide.
+  const dynamicBoundary = getCustomProductsStartRow();
+  if (dynamicBoundary > ACHRIM_LOG_START_ROW - 1) {
+    Logger.log(
+      '⚠️ WARNING: the fixed-product area now extends to row ' +
+        (dynamicBoundary - 1) +
+        ', which reaches/exceeds ACHRIM_LOG_START_ROW (' +
+        ACHRIM_LOG_START_ROW +
+        '). ' +
+        'The אחרים summary below may overlap fixed-product rows. Consider moving ACHRIM_LOG_START_ROW further down.'
+    );
+  }
+
+  // Scan every day-tab, summing quantities per unique product name —
+  // filtering by category === 'אחרים' per row means we don't need to know
+  // exactly where the free-text boundary sits on any particular sheet;
+  // base-catalog and fixed-product rows simply never have that category.
+  const totals = {}; // productName -> summed quantity
+
+  for (let day = 1; day <= 31; day++) {
+    const sheetName = day < 10 ? '0' + day : day.toString();
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) continue;
 
     const lastRow = sheet.getLastRow();
-    if (lastRow < CUSTOM_PRODUCTS_START_ROW) {
-      return;
-    }
+    if (lastRow < 2) continue;
 
-    // Read all rows from CUSTOM_PRODUCTS_START_ROW to end
-    const customData = sheet.getRange(CUSTOM_PRODUCTS_START_ROW, 1, lastRow - CUSTOM_PRODUCTS_START_ROW + 1, 3).getValues();
+    const data = sheet.getRange(2, 1, lastRow - 1, 3).getValues(); // A name, B category, C quantity
+    data.forEach((row) => {
+      const name = (row[0] || '').toString().trim();
+      const category = (row[1] || '').toString().trim();
+      const quantity = parseInt(row[2]) || 0;
 
-    customData.forEach(row => {
-      const [name, category, quantity] = row;
-
-      // Only process if it's אחרים category and has a name
-      if (name && category === 'אחרים' && quantity > 0) {
-        if (!customProductsMap[name]) {
-          customProductsMap[name] = 0;
-        }
-        customProductsMap[name] += parseInt(quantity) || 0;
+      if (name && category === 'אחרים') {
+        totals[name] = (totals[name] || 0) + quantity;
       }
     });
-  });
-
-  // Write consolidated אחרים products to summary sheet
-  const summaryStartRow = SUMMARY_CUSTOM_START_ROW; // Row 89
-
-  // Clear existing אחרים section first
-  const summaryLastRow = summarySheet.getLastRow();
-  if (summaryLastRow >= summaryStartRow) {
-    summarySheet.getRange(summaryStartRow, 1, summaryLastRow - summaryStartRow + 1, 3).clearContent();
   }
 
-  // Write consolidated products using batch update
-  const customProductsList = Object.entries(customProductsMap).sort((a, b) => a[0].localeCompare(b[0], 'he'));
+  // Clear this report's own block, then write header + data fresh.
+  clearAchrimDetailedLogArea(summarySheet);
 
-  if (customProductsList.length > 0) {
-    const summaryData = customProductsList.map(([productName, totalQuantity]) => [
-      productName,
-      '', // No price for custom products
-      totalQuantity
-    ]);
+  const headerRow = ACHRIM_LOG_START_ROW - 1;
+  summarySheet.getRange(headerRow, 1, 1, 3).setValues([['שם מוצר', 'קטגוריה', 'כמות']]);
+  summarySheet
+    .getRange(headerRow, 1, 1, 3)
+    .setFontWeight('bold')
+    .setBackground('#1a2f2f')
+    .setFontColor('#c4a575');
 
-    summarySheet.getRange(summaryStartRow, 1, summaryData.length, 3).setValues(summaryData);
+  const names = Object.keys(totals).sort((a, b) => a.localeCompare(b, 'he'));
+
+  if (names.length === 0) {
+    Logger.log('No אחרים entries found across any day-tab — report left empty (header only).');
+    return;
   }
 
-  Logger.log(`Consolidated ${customProductsList.length} unique אחרים products in summary`);
+  const rows = names.map((name) => [name, 'אחרים', totals[name]]);
+  summarySheet.getRange(ACHRIM_LOG_START_ROW, 1, rows.length, 3).setValues(rows);
+
+  Logger.log(names.length + ' unique אחרים products written at row ' + ACHRIM_LOG_START_ROW);
 }
 
 // ============================================================================
@@ -1265,11 +1653,23 @@ function sendConfirmationEmailWithRetry(formData, sheet, day) {
   return false;
 }
 
-function sendManagerEmailWithRetry(sheet, day, fullConfirmation, confirmedProducts, changedProducts) {
+function sendManagerEmailWithRetry(
+  sheet,
+  day,
+  fullConfirmation,
+  confirmedProducts,
+  changedProducts
+) {
   for (let attempt = 1; attempt <= MAX_EMAIL_RETRIES; attempt++) {
     try {
       Logger.log('Manager email attempt ' + attempt + ' of ' + MAX_EMAIL_RETRIES);
-      sendConfirmationCompleteEmail(sheet, day, fullConfirmation, confirmedProducts, changedProducts);
+      sendConfirmationCompleteEmail(
+        sheet,
+        day,
+        fullConfirmation,
+        confirmedProducts,
+        changedProducts
+      );
       Logger.log('Manager email sent successfully on attempt ' + attempt);
       return true;
     } catch (error) {
@@ -1281,6 +1681,202 @@ function sendManagerEmailWithRetry(sheet, day, fullConfirmation, confirmedProduc
   }
   Logger.log('All manager email attempts failed');
   return false;
+}
+
+// ============================================================================
+// DAILY REMINDER — pending (unconfirmed) תעודות משלוח
+//
+// Sends a daily email (~09:45, project timezone — see
+// createPendingConfirmationsReminderTrigger()) to EMAIL_EDEN and
+// EMAIL_RECIPIENT listing every day-tab whose delivery was submitted but
+// not yet confirmed by שלו (COLUMNS.CONFIRMATION_STATUS === 'pending').
+// Sends nothing on a day where everything is already confirmed.
+// ============================================================================
+
+function sendPendingConfirmationsReminderEmail() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const tz = 'Asia/Jerusalem';
+    const now = new Date();
+    const monthIndex = parseInt(Utilities.formatDate(now, tz, 'M'), 10) - 1;
+    const year = Utilities.formatDate(now, tz, 'yyyy');
+    const monthNum = Utilities.formatDate(now, tz, 'MM');
+    const monthName = HEBREW_MONTH_NAMES[monthIndex] || monthNum;
+
+    const pendingDays = [];
+
+    for (let day = 1; day <= 31; day++) {
+      const sheetName = day < 10 ? '0' + day : day.toString();
+      const sheet = ss.getSheetByName(sheetName);
+      if (!sheet) continue;
+
+      const submissionId = sheet.getRange(2, COLUMNS.SUBMISSION_ID).getValue();
+      const status = sheet.getRange(2, COLUMNS.CONFIRMATION_STATUS).getValue();
+
+      // Only flag days that actually had a delivery submitted (a real
+      // submission ID) AND are still marked 'pending' — an empty day that
+      // was simply never used shouldn't show up as "waiting on שלו".
+      if (submissionId && String(status).trim() === 'pending') {
+        const fillerName = sheet.getRange(2, COLUMNS.FILLER_NAME).getValue() || '';
+        const certNumber = sheet.getRange(2, COLUMNS.CERTIFICATE_NUMBER).getValue() || '';
+        const fullDate = sheetName + '/' + monthNum + '/' + year;
+        const confirmationLink = `${CONFIRMATION_URL}?day=${sheetName}&submission_id=${encodeURIComponent(submissionId)}`;
+
+        pendingDays.push({
+          day: sheetName,
+          fullDate: fullDate,
+          fillerName: fillerName,
+          certNumber: certNumber,
+          link: confirmationLink,
+        });
+      }
+    }
+
+    if (pendingDays.length === 0) {
+      Logger.log(
+        'sendPendingConfirmationsReminderEmail: no pending confirmations today — no email sent.'
+      );
+      return;
+    }
+
+    const subject = `תזכורת: ${pendingDays.length} תעודות משלוח ממתינות לאישור שלו - ${monthName} ${year}`;
+
+    const rowsHTML = pendingDays
+      .map(
+        (p) => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #e0e0e0; text-align: center; font-weight: 600;">${p.fullDate}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">${p.certNumber || '—'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">${p.fillerName || '—'}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #e0e0e0; text-align: center;">
+          <a href="${p.link}" style="color: #1a2f2f; font-weight: 600;">לאישור ←</a>
+        </td>
+      </tr>
+    `
+      )
+      .join('');
+
+    const htmlBody = `
+      <div style="font-family: Arial, sans-serif; direction: rtl; max-width: 620px; margin: 0 auto;">
+        <div style="background: #1a2f2f; color: #c4a575; padding: 20px; border-radius: 8px 8px 0 0;">
+          <h2 style="margin: 0; font-size: 20px;">תזכורת יומית — תעודות משלוח הממתינות לאישור</h2>
+          <div style="font-size: 14px; margin-top: 6px; opacity: 0.9;">${monthName} ${year}</div>
+        </div>
+        <div style="background: white; padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
+          <p>שלום,</p>
+          <p>נכון להיום, <b>${pendingDays.length}</b> תעודות משלוח לחודש ${monthName} ${year} טרם אושרו על ידי שלו:</p>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <thead>
+              <tr style="background: #f5f5f5;">
+                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #e0e0e0;">תאריך</th>
+                <th style="padding: 10px; text-align: right; border-bottom: 2px solid #e0e0e0;">מס׳ תעודה</th>
+                <th style="padding: 10px; text-align: right; border-bottom: 2px solid #e0e0e0;">שם הממלא/ת</th>
+                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #e0e0e0;">קישור</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHTML}</tbody>
+          </table>
+          <p style="margin-top: 20px; font-size: 13px; color: #888;">
+            הודעה אוטומטית זו נשלחת מדי יום בסביבות השעה 09:45, כל עוד יש תעודות שטרם אושרו.
+          </p>
+        </div>
+      </div>
+    `;
+
+    const plainBody =
+      `תזכורת: התעודות הבאות טרם אושרו על ידי שלו (${monthName} ${year}):\n\n` +
+      pendingDays
+        .map(
+          (p) =>
+            `${p.fullDate} - מס' תעודה: ${p.certNumber || '—'} - ${p.fillerName || '—'} - ${p.link}`
+        )
+        .join('\n');
+
+    const recipients = [EMAIL_EDEN, EMAIL_RECIPIENT].join(',');
+
+    try {
+      GmailApp.sendEmail(recipients, subject, plainBody, {
+        htmlBody: htmlBody,
+        name: 'זוזה פטיסרי - מערכת משלוחים',
+      });
+      Logger.log('Pending confirmations reminder sent via GmailApp to: ' + recipients);
+    } catch (error) {
+      Logger.log('GmailApp failed, trying MailApp: ' + error.toString());
+      MailApp.sendEmail({
+        to: recipients,
+        subject: subject,
+        body: plainBody,
+        htmlBody: htmlBody,
+        name: 'זוזה פטיסרי - מערכת משלוחים',
+      });
+      Logger.log('Pending confirmations reminder sent via MailApp to: ' + recipients);
+    }
+  } catch (error) {
+    Logger.log('ERROR in sendPendingConfirmationsReminderEmail: ' + error.toString());
+  }
+}
+
+// Menu-triggered manual test — sends immediately (if there's anything
+// pending), without waiting for the scheduled trigger.
+function manualSendPendingConfirmationsReminderEmail() {
+  const ui = SpreadsheetApp.getUi();
+  sendPendingConfirmationsReminderEmail();
+  ui.alert(
+    'תזכורת נשלחה (אם היה מה לשלוח)',
+    'בדוק את התיבה הנכנסת של ' +
+      EMAIL_EDEN +
+      ' ו-' +
+      EMAIL_RECIPIENT +
+      '. אם לא הגיע מייל, סימן שאין כרגע תעודות ממתינות לאישור.',
+    ui.ButtonSet.OK
+  );
+}
+
+// ONE-TIME SETUP — run this once (select the function in the Apps Script
+// editor and click Run, or use the "📧 תזכורת אישורים" menu). Safe to
+// re-run: it removes any existing trigger for this function first, so it
+// never creates duplicates.
+//
+// IMPORTANT: time-based triggers fire according to the Apps Script
+// project's configured timezone (Project Settings → Time zone), NOT
+// automatically "Israel time". Make sure that's set to
+// "(GMT+02:00/+03:00) Jerusalem" for this to actually fire at ~09:45
+// Israel time. atHour(9) + nearMinute(45) gives Apps Script's closest
+// approximation to an exact daily time (typically within about 15
+// minutes of 09:45) — Apps Script does not guarantee the exact minute.
+function createPendingConfirmationsReminderTrigger() {
+  ScriptApp.getProjectTriggers().forEach((trigger) => {
+    if (trigger.getHandlerFunction() === 'sendPendingConfirmationsReminderEmail') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  ScriptApp.newTrigger('sendPendingConfirmationsReminderEmail')
+    .timeBased()
+    .atHour(9)
+    .nearMinute(45)
+    .everyDays(1)
+    .create();
+
+  Logger.log(
+    'Daily reminder trigger created (~09:45 project timezone) -> sendPendingConfirmationsReminderEmail'
+  );
+
+  try {
+    SpreadsheetApp.getUi().alert(
+      'התזכורת היומית הופעלה',
+      'המייל יישלח מדי יום בסביבות 09:45 (לפי אזור הזמן של הפרויקט) ל-' +
+        EMAIL_EDEN +
+        ' ו-' +
+        EMAIL_RECIPIENT +
+        ',\n' +
+        'רק אם יש תעודות שטרם אושרו. ודא/י שאזור הזמן של הפרויקט מוגדר לירושלים ' +
+        '(⚙️ הגדרות הפרויקט ← אזור זמן) כדי שהשעה תהיה מדויקת.',
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (e) {
+    // no UI context (e.g. run from the script editor directly) — ignore
+  }
 }
 
 function sendConfirmationEmail(formData, sheet, day) {
@@ -1295,7 +1891,7 @@ function sendConfirmationEmail(formData, sheet, day) {
   try {
     GmailApp.sendEmail(EMAIL_RECIPIENT, subject, plainBody, {
       htmlBody: htmlBody,
-      name: 'זוזה פטיסרי - מערכת משלוחים'
+      name: 'זוזה פטיסרי - מערכת משלוחים',
     });
     Logger.log('Email sent via GmailApp to: ' + EMAIL_RECIPIENT);
   } catch (error) {
@@ -1305,13 +1901,19 @@ function sendConfirmationEmail(formData, sheet, day) {
       subject: subject,
       body: plainBody,
       htmlBody: htmlBody,
-      name: 'זוזה פטיסרי - מערכת משלוחים'
+      name: 'זוזה פטיסרי - מערכת משלוחים',
     });
     Logger.log('Email sent via MailApp to: ' + EMAIL_RECIPIENT);
   }
 }
 
-function sendConfirmationCompleteEmail(sheet, day, fullConfirmation, confirmedProducts, changedProducts) {
+function sendConfirmationCompleteEmail(
+  sheet,
+  day,
+  fullConfirmation,
+  confirmedProducts,
+  changedProducts
+) {
   const generalInfo = sheet.getRange(2, COLUMNS.DATE, 1, 6).getValues()[0];
 
   const deliveryDateRaw = generalInfo[0];
@@ -1366,7 +1968,7 @@ function sendConfirmationCompleteEmail(sheet, day, fullConfirmation, confirmedPr
   try {
     GmailApp.sendEmail(EMAIL_MANAGER, subject, plainBody, {
       htmlBody: htmlBody,
-      name: 'זוזה פטיסרי - מערכת משלוחים'
+      name: 'זוזה פטיסרי - מערכת משלוחים',
     });
     Logger.log('Manager email sent via GmailApp to: ' + EMAIL_MANAGER);
   } catch (error) {
@@ -1376,7 +1978,7 @@ function sendConfirmationCompleteEmail(sheet, day, fullConfirmation, confirmedPr
       subject: subject,
       body: plainBody,
       htmlBody: htmlBody,
-      name: 'זוזה פטיסרי - מערכת משלוחים'
+      name: 'זוזה פטיסרי - מערכת משלוחים',
     });
     Logger.log('Manager email sent via MailApp to: ' + EMAIL_MANAGER);
   }
@@ -1385,7 +1987,7 @@ function sendConfirmationCompleteEmail(sheet, day, fullConfirmation, confirmedPr
 function buildConfirmationEmailHTML(formData, products, confirmationLink) {
   const categorized = {};
 
-  products.forEach(product => {
+  products.forEach((product) => {
     if (!categorized[product.category]) {
       categorized[product.category] = [];
     }
@@ -1393,7 +1995,7 @@ function buildConfirmationEmailHTML(formData, products, confirmationLink) {
   });
 
   let productsHTML = '';
-  Object.keys(categorized).forEach(category => {
+  Object.keys(categorized).forEach((category) => {
     productsHTML += `
       <div style="margin-bottom: 20px;">
         <h3 style="background: #1a2f2f; color: #c4a575; padding: 10px; margin: 0; border-radius: 6px 6px 0 0; font-size: 16px;">
@@ -1496,18 +2098,28 @@ ${confirmationLink}
 זוזה פטיסרי - מערכת ניהול משלוחים`;
 }
 
-function buildConfirmationCompleteEmailHTML(deliveryDate, certNumber, fillerName, submissionTime, confirmationTime, fullConfirmation, confirmedProducts, changedProducts, submissionId) {
+function buildConfirmationCompleteEmailHTML(
+  deliveryDate,
+  certNumber,
+  fillerName,
+  submissionTime,
+  confirmationTime,
+  fullConfirmation,
+  confirmedProducts,
+  changedProducts,
+  submissionId
+) {
   let productsHTML = '';
 
   if (!fullConfirmation && confirmedProducts && confirmedProducts.length > 0) {
     const changedProductsMap = {};
-    changedProducts.forEach(product => {
+    changedProducts.forEach((product) => {
       changedProductsMap[product.key] = product;
     });
 
     const categorized = {};
-    confirmedProducts.forEach(product => {
-      const productInfo = PRODUCT_ROW_MAP[product.key] || { category: 'אחרים' };
+    confirmedProducts.forEach((product) => {
+      const productInfo = getCombinedProductMap()[product.key] || { category: 'אחרים' };
       const category = productInfo.category;
 
       if (!categorized[category]) {
@@ -1523,17 +2135,18 @@ function buildConfirmationCompleteEmailHTML(deliveryDate, certNumber, fillerName
         quantity: product.quantity,
         isChanged: isChanged,
         originalQuantity: changedData ? changedData.originalQuantity : product.quantity,
-        confirmedQuantity: product.quantity
+        confirmedQuantity: product.quantity,
       });
     });
 
     productsHTML = '<div style="margin-top: 30px;">';
 
     if (changedProducts.length > 0) {
-      productsHTML += '<h3 style="color: #d32f2f; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #ff9800; padding-bottom: 8px;">⚠️ שינויים שבוצעו על ידי שלו:</h3>';
+      productsHTML +=
+        '<h3 style="color: #d32f2f; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #ff9800; padding-bottom: 8px;">⚠️ שינויים שבוצעו על ידי שלו:</h3>';
 
-      Object.keys(categorized).forEach(category => {
-        const changedInCategory = categorized[category].filter(p => p.isChanged);
+      Object.keys(categorized).forEach((category) => {
+        const changedInCategory = categorized[category].filter((p) => p.isChanged);
 
         if (changedInCategory.length > 0) {
           productsHTML += `
@@ -1576,9 +2189,10 @@ function buildConfirmationCompleteEmailHTML(deliveryDate, certNumber, fillerName
       productsHTML += '<div style="margin: 30px 0; border-top: 2px solid #e0e0e0;"></div>';
     }
 
-    productsHTML += '<h3 style="color: #1a2f2f; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #c4a575; padding-bottom: 8px;">כל המוצרים שאושרו:</h3>';
+    productsHTML +=
+      '<h3 style="color: #1a2f2f; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #c4a575; padding-bottom: 8px;">כל המוצרים שאושרו:</h3>';
 
-    Object.keys(categorized).forEach(category => {
+    Object.keys(categorized).forEach((category) => {
       productsHTML += `
         <div style="margin-bottom: 20px;">
           <h4 style="background: #f5f5f5; padding: 10px; border-right: 4px solid #c4a575; margin: 10px 0; font-size: 16px; color: #333;">
@@ -1596,7 +2210,7 @@ function buildConfirmationCompleteEmailHTML(deliveryDate, certNumber, fillerName
       `;
 
       categorized[category].forEach((product, index) => {
-        const bgColor = product.isChanged ? '#fff8e1' : (index % 2 === 0 ? '#ffffff' : '#fafafa');
+        const bgColor = product.isChanged ? '#fff8e1' : index % 2 === 0 ? '#ffffff' : '#fafafa';
         const statusText = product.isChanged ? '✏️ שונה' : '✓ ללא שינוי';
         const statusColor = product.isChanged ? '#ff9800' : '#4caf50';
 
@@ -1661,9 +2275,10 @@ function buildConfirmationCompleteEmailHTML(deliveryDate, certNumber, fillerName
             </table>
           </div>
 
-          ${fullConfirmation
-            ? '<div style="background: #e8f5e9; padding: 20px; border-radius: 8px; border-right: 4px solid #4caf50; text-align: center; font-size: 16px; color: #2e7d32;"><strong>כל המוצרים הגיעו במלואם ללא שינויים</strong></div>'
-            : productsHTML
+          ${
+            fullConfirmation
+              ? '<div style="background: #e8f5e9; padding: 20px; border-radius: 8px; border-right: 4px solid #4caf50; text-align: center; font-size: 16px; color: #2e7d32;"><strong>כל המוצרים הגיעו במלואם ללא שינויים</strong></div>'
+              : productsHTML
           }
 
           <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px; text-align: center;">
@@ -1680,7 +2295,17 @@ function buildConfirmationCompleteEmailHTML(deliveryDate, certNumber, fillerName
   `;
 }
 
-function buildConfirmationCompleteEmailPlain(deliveryDate, certNumber, fillerName, submissionTime, confirmationTime, fullConfirmation, confirmedProducts, changedProducts, submissionId) {
+function buildConfirmationCompleteEmailPlain(
+  deliveryDate,
+  certNumber,
+  fillerName,
+  submissionTime,
+  confirmationTime,
+  fullConfirmation,
+  confirmedProducts,
+  changedProducts,
+  submissionId
+) {
   let body = `תעודת משלוח אושרה
 ==================
 
@@ -1699,7 +2324,7 @@ function buildConfirmationCompleteEmailPlain(deliveryDate, certNumber, fillerNam
     body += '================================\n';
 
     const categorized = {};
-    changedProducts.forEach(product => {
+    changedProducts.forEach((product) => {
       const category = product.category;
 
       if (!categorized[category]) {
@@ -1708,10 +2333,10 @@ function buildConfirmationCompleteEmailPlain(deliveryDate, certNumber, fillerNam
       categorized[category].push(product);
     });
 
-    Object.keys(categorized).forEach(category => {
+    Object.keys(categorized).forEach((category) => {
       body += `\n${category}:\n`;
       body += '-'.repeat(category.length) + '\n';
-      categorized[category].forEach(product => {
+      categorized[category].forEach((product) => {
         const difference = product.confirmedQuantity - product.originalQuantity;
         const differenceText = difference > 0 ? `+${difference}` : difference.toString();
         body += `  • ${product.name}: ${product.originalQuantity} → ${product.confirmedQuantity} (${differenceText})\n`;
@@ -1722,8 +2347,8 @@ function buildConfirmationCompleteEmailPlain(deliveryDate, certNumber, fillerNam
     body += '==================\n';
 
     const allCategorized = {};
-    confirmedProducts.forEach(product => {
-      const productInfo = PRODUCT_ROW_MAP[product.key] || { category: 'אחרים' };
+    confirmedProducts.forEach((product) => {
+      const productInfo = getCombinedProductMap()[product.key] || { category: 'אחרים' };
       const category = productInfo.category;
 
       if (!allCategorized[category]) {
@@ -1732,10 +2357,10 @@ function buildConfirmationCompleteEmailPlain(deliveryDate, certNumber, fillerNam
       allCategorized[category].push(product);
     });
 
-    Object.keys(allCategorized).forEach(category => {
+    Object.keys(allCategorized).forEach((category) => {
       body += `\n${category}:\n`;
-      allCategorized[category].forEach(product => {
-        const changedProduct = changedProducts.find(p => p.key === product.key);
+      allCategorized[category].forEach((product) => {
+        const changedProduct = changedProducts.find((p) => p.key === product.key);
         const status = changedProduct ? '(שונה)' : '(ללא שינוי)';
         body += `  • ${product.name}: ${product.quantity} ${status}\n`;
       });
@@ -1754,105 +2379,210 @@ function buildConfirmationCompleteEmailPlain(deliveryDate, certNumber, fillerNam
 
 const PRODUCT_ROW_MAP = {
   // Sweet pastries - מאפים מתוקים (rows 2-19)
-  'sweet_croissant_butter': { row: 2, name: 'קרואסון חמאה', category: 'מאפים מתוקים', price: 0 },
-  'sweet_croissant_chocolate': { row: 3, name: 'קרואסון שוקולד', category: 'מאפים מתוקים', price: 0 },
-  'sweet_fruit_pastry': { row: 4, name: 'מאפה פירות', category: 'מאפים מתוקים', price: 0 },
-  'sweet_pecan_pastry': { row: 5, name: 'מאפה פקאן', category: 'מאפים מתוקים', price: 0 },
-  'sweet_almond_milk_chocolate': { row: 6, name: 'מאפה שקדים שוקולד חלב', category: 'מאפים מתוקים', price: 0 },
-  'sweet_cinnamon': { row: 7, name: 'סינבון', category: 'מאפים מתוקים', price: 0 },
-  'sweet_pain_suisse': { row: 8, name: 'פאן סוויס', category: 'מאפים מתוקים', price: 0 },
-  'sweet_butterfly_pastry': { row: 9, name: 'מאפה פפיון', category: 'מאפים מתוקים', price: 0 },
-  'sweet_shti_veerev': { row: 10, name: 'מאפה שתי וערב', category: 'מאפים מתוקים', price: 0 },
-  'sweet_rugelach': { row: 11, name: 'רוגלך', category: 'מאפים מתוקים', price: 0 },
-  'sweet_chocolate_chips': { row: 12, name: "שוקולד צ'יפס", category: 'מאפים מתוקים', price: 0 },
-  'sweet_croissant_pistachio': { row: 13, name: 'קרואסון פיסטוק', category: 'מאפים מתוקים', price: 0 },
-  'sweet_croissant_cheese_berry': { row: 14, name: 'קרואסון גבינה פירות יער', category: 'מאפים מתוקים', price: 0 },
-  'sweet_croissant_almonds': { row: 15, name: 'קרואסון שקדים', category: 'מאפים מתוקים', price: 0 },
-  'sweet_kouign_amann': { row: 16, name: 'קווין אמאן', category: 'מאפים מתוקים', price: 0 },
-  'sweet_krapfen': { row: 17, name: 'קראפין', category: 'מאפים מתוקים', price: 30 },
-  'sweet_brioche_sugar': { row: 18, name: 'בריוש סוכרה', category: 'מאפים מתוקים', price: 0 },
-  'sweet_brownies_hazelnut': { row: 19, name: 'מאפה בראוניז לוז', category: 'מאפים מתוקים', price: 0 },
+  sweet_croissant_butter: { row: 2, name: 'קרואסון חמאה', category: 'מאפים מתוקים', price: 0 },
+  sweet_croissant_chocolate: { row: 3, name: 'קרואסון שוקולד', category: 'מאפים מתוקים', price: 0 },
+  sweet_fruit_pastry: { row: 4, name: 'מאפה פירות', category: 'מאפים מתוקים', price: 0 },
+  sweet_pecan_pastry: { row: 5, name: 'מאפה פקאן', category: 'מאפים מתוקים', price: 0 },
+  sweet_almond_milk_chocolate: {
+    row: 6,
+    name: 'מאפה שקדים שוקולד חלב',
+    category: 'מאפים מתוקים',
+    price: 0,
+  },
+  sweet_cinnamon: { row: 7, name: 'סינבון', category: 'מאפים מתוקים', price: 0 },
+  sweet_pain_suisse: { row: 8, name: 'פאן סוויס', category: 'מאפים מתוקים', price: 0 },
+  sweet_butterfly_pastry: { row: 9, name: 'מאפה פפיון', category: 'מאפים מתוקים', price: 0 },
+  sweet_shti_veerev: { row: 10, name: 'מאפה שתי וערב', category: 'מאפים מתוקים', price: 0 },
+  sweet_rugelach: { row: 11, name: 'רוגלך', category: 'מאפים מתוקים', price: 0 },
+  sweet_chocolate_chips: { row: 12, name: "שוקולד צ'יפס", category: 'מאפים מתוקים', price: 0 },
+  sweet_croissant_pistachio: {
+    row: 13,
+    name: 'קרואסון פיסטוק',
+    category: 'מאפים מתוקים',
+    price: 0,
+  },
+  sweet_croissant_cheese_berry: {
+    row: 14,
+    name: 'קרואסון גבינה פירות יער',
+    category: 'מאפים מתוקים',
+    price: 0,
+  },
+  sweet_croissant_almonds: { row: 15, name: 'קרואסון שקדים', category: 'מאפים מתוקים', price: 0 },
+  sweet_kouign_amann: { row: 16, name: 'קווין אמאן', category: 'מאפים מתוקים', price: 0 },
+  sweet_krapfen: { row: 17, name: 'קראפין', category: 'מאפים מתוקים', price: 30 },
+  sweet_brioche_sugar: { row: 18, name: 'בריוש סוכרה', category: 'מאפים מתוקים', price: 0 },
+  sweet_brownies_hazelnut: {
+    row: 19,
+    name: 'מאפה בראוניז לוז',
+    category: 'מאפים מתוקים',
+    price: 0,
+  },
 
   // Salty - מלוחים (rows 20-33)
-  'salty_empty_bun': { row: 20, name: 'לחמניה ריקה', category: 'מלוחים', price: 0 },
-  'salty_empty_bagel': { row: 21, name: 'בייגל ריק', category: 'מלוחים', price: 0 },
+  salty_empty_bun: { row: 20, name: 'לחמניה ריקה', category: 'מלוחים', price: 0 },
+  salty_empty_bagel: { row: 21, name: 'בייגל ריק', category: 'מלוחים', price: 0 },
   // salty_empty_poppy_bun removed — not present in actual spreadsheet (was row 22)
-  'salty_empty_cheese_bourekas': { row: 22, name: 'בורקס גבינה ריק', category: 'מלוחים', price: 0 },
-  'salty_rectangle_pastry': { row: 23, name: 'מאפה מלוח (מלבן)', category: 'מלוחים', price: 0 },
-  'salty_focaccia_squares': { row: 24, name: "ריבועי פוקאצ'ה", category: 'מלוחים', price: 0 },
-  'salty_personal_focaccia': { row: 25, name: "פוקאצ'ה אישית", category: 'מלוחים', price: 0 },
-  'salty_quiche_10': { row: 26, name: 'קיש ק.10', category: 'מלוחים', price: 0 },
-  'salty_bagelson': { row: 27, name: 'בייגלסון', category: 'מלוחים', price: 0 },
-  'salty_brioche_challah': { row: 28, name: 'חלות בריוש', category: 'מלוחים', price: 0 },
-  'salty_bread_loaf': { row: 29, name: 'כיכר לחם', category: 'מלוחים', price: 0 },
-  'salty_cheese_saviach': { row: 30, name: 'מאפה גבינות וסביח', category: 'מלוחים', price: 38 },
-  'salty_cheese_spinach': { row: 31, name: 'מאפה גבינה ותרד', category: 'מלוחים', price: 32 },
-  'salty_poppy_bun': { row: 32, name: 'לחמניית פרג', category: 'מלוחים', price: 0 },
-  'salty_pretzel': { row: 33, name: 'פרעצל', category: 'מלוחים', price: 0 },
+  salty_empty_cheese_bourekas: { row: 22, name: 'בורקס גבינה ריק', category: 'מלוחים', price: 0 },
+  salty_rectangle_pastry: { row: 23, name: 'מאפה מלוח (מלבן)', category: 'מלוחים', price: 0 },
+  salty_focaccia_squares: { row: 24, name: "ריבועי פוקאצ'ה", category: 'מלוחים', price: 0 },
+  salty_personal_focaccia: { row: 25, name: "פוקאצ'ה אישית", category: 'מלוחים', price: 0 },
+  salty_quiche_10: { row: 26, name: 'קיש ק.10', category: 'מלוחים', price: 0 },
+  salty_bagelson: { row: 27, name: 'בייגלסון', category: 'מלוחים', price: 0 },
+  salty_brioche_challah: { row: 28, name: 'חלות בריוש', category: 'מלוחים', price: 0 },
+  salty_bread_loaf: { row: 29, name: 'כיכר לחם', category: 'מלוחים', price: 0 },
+  salty_cheese_saviach: { row: 30, name: 'מאפה גבינות וסביח', category: 'מלוחים', price: 38 },
+  salty_cheese_spinach: { row: 31, name: 'מאפה גבינה ותרד', category: 'מלוחים', price: 32 },
+  salty_poppy_bun: { row: 32, name: 'לחמניית פרג', category: 'מלוחים', price: 0 },
+  salty_pretzel: { row: 33, name: 'פרעצל', category: 'מלוחים', price: 0 },
 
   // Sandwiches - כריכים (rows 34-41)
-  'sandwiches_beet_sourdough': { row: 34, name: 'מחמצת סלק', category: 'כריכים', price: 0 },
-  'sandwiches_eggplant_sourdough': { row: 35, name: 'מחמצת חצילים', category: 'כריכים', price: 0 },
-  'sandwiches_brioche_poppy_camembert': { row: 36, name: 'בריוש פרג קממבר', category: 'כריכים', price: 0 },
-  'sandwiches_bourekas_cheeses': { row: 37, name: 'כריך בורקס גבינות', category: 'כריכים', price: 0 },
-  'sandwiches_croissant_butter': { row: 38, name: 'כריך קרואסון חמאה', category: 'כריכים', price: 0 },
-  'sandwiches_bagel': { row: 39, name: 'כריך בייגל', category: 'כריכים', price: 0 },
-  'sandwiches_focaccia': { row: 40, name: "כריך פוקאצ'ה", category: 'כריכים', price: 0 },
-  'sandwiches_scrambled_bun': { row: 41, name: 'לחמניה מקושקשת', category: 'כריכים', price: 0 },
+  sandwiches_beet_sourdough: { row: 34, name: 'מחמצת סלק', category: 'כריכים', price: 0 },
+  sandwiches_eggplant_sourdough: { row: 35, name: 'מחמצת חצילים', category: 'כריכים', price: 0 },
+  sandwiches_brioche_poppy_camembert: {
+    row: 36,
+    name: 'בריוש פרג קממבר',
+    category: 'כריכים',
+    price: 0,
+  },
+  sandwiches_bourekas_cheeses: { row: 37, name: 'כריך בורקס גבינות', category: 'כריכים', price: 0 },
+  sandwiches_croissant_butter: { row: 38, name: 'כריך קרואסון חמאה', category: 'כריכים', price: 0 },
+  sandwiches_bagel: { row: 39, name: 'כריך בייגל', category: 'כריכים', price: 0 },
+  sandwiches_focaccia: { row: 40, name: "כריך פוקאצ'ה", category: 'כריכים', price: 0 },
+  sandwiches_scrambled_bun: { row: 41, name: 'לחמניה מקושקשת', category: 'כריכים', price: 0 },
 
   // Shelf products - מוצרי מדף (rows 42-44)
-  'shelf_yeast_cake': { row: 42, name: 'עוגת שמרים', category: 'מוצרי מדף', price: 0 },
-  'shelf_challah': { row: 43, name: 'חלות', category: 'מוצרי מדף', price: 0 },
-  'shelf_thick': { row: 44, name: 'בחושות', category: 'מוצרי מדף', price: 0 },
+  shelf_yeast_cake: { row: 42, name: 'עוגת שמרים', category: 'מוצרי מדף', price: 0 },
+  shelf_challah: { row: 43, name: 'חלות', category: 'מוצרי מדף', price: 0 },
+  shelf_thick: { row: 44, name: 'בחושות', category: 'מוצרי מדף', price: 0 },
 
   // Whole cakes - עוגות שלמות (rows 45-55)
-  'whole_cakes_fudge_mascarpone_strip': { row: 45, name: "פס פאדג' מסקרפונה", category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_rusha_hazelnut_strip': { row: 46, name: 'פס רושה אגוזי לוז', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_mango_passionfruit_strip': { row: 47, name: 'פס מנגו פסיפלורה', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_coffee_pecan_strip': { row: 48, name: 'פס קפה פקאן', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_tricolor_20': { row: 49, name: 'טריקולד ק.20', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_pistachio_berry_20': { row: 50, name: 'פיסטוק פירות יער ק.20', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_cheese_crumbs_20': { row: 51, name: 'גבינה פירורים ק.20', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_baked_cheese_20': { row: 52, name: 'גבינה אפויה ק.20', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_rusha_hazelnut_square': { row: 53, name: 'ריבוע רושה אגוזי לוז', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_coffee_pecan_square': { row: 54, name: 'ריבוע קפה פקאן', category: 'עוגות שלמות', price: 0 },
-  'whole_cakes_chocolate_fudge': { row: 55, name: "פאדג' שוקולד", category: 'עוגות שלמות', price: 0 },
+  whole_cakes_fudge_mascarpone_strip: {
+    row: 45,
+    name: "פס פאדג' מסקרפונה",
+    category: 'עוגות שלמות',
+    price: 0,
+  },
+  whole_cakes_rusha_hazelnut_strip: {
+    row: 46,
+    name: 'פס רושה אגוזי לוז',
+    category: 'עוגות שלמות',
+    price: 0,
+  },
+  whole_cakes_mango_passionfruit_strip: {
+    row: 47,
+    name: 'פס מנגו פסיפלורה',
+    category: 'עוגות שלמות',
+    price: 0,
+  },
+  whole_cakes_coffee_pecan_strip: {
+    row: 48,
+    name: 'פס קפה פקאן',
+    category: 'עוגות שלמות',
+    price: 0,
+  },
+  whole_cakes_tricolor_20: { row: 49, name: 'טריקולד ק.20', category: 'עוגות שלמות', price: 0 },
+  whole_cakes_pistachio_berry_20: {
+    row: 50,
+    name: 'פיסטוק פירות יער ק.20',
+    category: 'עוגות שלמות',
+    price: 0,
+  },
+  whole_cakes_cheese_crumbs_20: {
+    row: 51,
+    name: 'גבינה פירורים ק.20',
+    category: 'עוגות שלמות',
+    price: 0,
+  },
+  whole_cakes_baked_cheese_20: {
+    row: 52,
+    name: 'גבינה אפויה ק.20',
+    category: 'עוגות שלמות',
+    price: 0,
+  },
+  whole_cakes_rusha_hazelnut_square: {
+    row: 53,
+    name: 'ריבוע רושה אגוזי לוז',
+    category: 'עוגות שלמות',
+    price: 0,
+  },
+  whole_cakes_coffee_pecan_square: {
+    row: 54,
+    name: 'ריבוע קפה פקאן',
+    category: 'עוגות שלמות',
+    price: 0,
+  },
+  whole_cakes_chocolate_fudge: { row: 55, name: "פאדג' שוקולד", category: 'עוגות שלמות', price: 0 },
 
   // Vitrina desserts - קינוחי ויטרינה (rows 56-67)
-  'vitrina_cashew_dolce': { row: 56, name: "קשיו דולצ'ה", category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_pistachio_berry': { row: 57, name: 'פיסטוק פירות יער', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_pheasant_vanilla_raspberry': { row: 58, name: 'פחזנית וניל פטל', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_sabla_pecan': { row: 59, name: 'סבלה פקאן', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_fruit_tart': { row: 60, name: 'טארט פירות', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_lemon_tart_100': { row: 61, name: 'טארט לימון 100%', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_chocolate_100': { row: 62, name: '100 אחוז שוקולד', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_rusha_hazelnut': { row: 63, name: 'רושה אגוזי לוז', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_paris_brest': { row: 64, name: 'פריז ברסט', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_chocolate_ball': { row: 65, name: 'כדור שוקולד', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_personal_pheasant_vanilla': { row: 66, name: 'פחזנית וניל אישית', category: 'קינוחי ויטרינה', price: 0 },
-  'vitrina_chocolate_fudge': { row: 67, name: "פאדג' שוקולד", category: 'קינוחי ויטרינה', price: 0 },
+  vitrina_cashew_dolce: { row: 56, name: "קשיו דולצ'ה", category: 'קינוחי ויטרינה', price: 0 },
+  vitrina_pistachio_berry: {
+    row: 57,
+    name: 'פיסטוק פירות יער',
+    category: 'קינוחי ויטרינה',
+    price: 0,
+  },
+  vitrina_pheasant_vanilla_raspberry: {
+    row: 58,
+    name: 'פחזנית וניל פטל',
+    category: 'קינוחי ויטרינה',
+    price: 0,
+  },
+  vitrina_sabla_pecan: { row: 59, name: 'סבלה פקאן', category: 'קינוחי ויטרינה', price: 0 },
+  vitrina_fruit_tart: { row: 60, name: 'טארט פירות', category: 'קינוחי ויטרינה', price: 0 },
+  vitrina_lemon_tart_100: {
+    row: 61,
+    name: 'טארט לימון 100%',
+    category: 'קינוחי ויטרינה',
+    price: 0,
+  },
+  vitrina_chocolate_100: { row: 62, name: '100 אחוז שוקולד', category: 'קינוחי ויטרינה', price: 0 },
+  vitrina_rusha_hazelnut: { row: 63, name: 'רושה אגוזי לוז', category: 'קינוחי ויטרינה', price: 0 },
+  vitrina_paris_brest: { row: 64, name: 'פריז ברסט', category: 'קינוחי ויטרינה', price: 0 },
+  vitrina_chocolate_ball: { row: 65, name: 'כדור שוקולד', category: 'קינוחי ויטרינה', price: 0 },
+  vitrina_personal_pheasant_vanilla: {
+    row: 66,
+    name: 'פחזנית וניל אישית',
+    category: 'קינוחי ויטרינה',
+    price: 0,
+  },
+  vitrina_chocolate_fudge: { row: 67, name: "פאדג' שוקולד", category: 'קינוחי ויטרינה', price: 0 },
 
   // Cookies - עוגיות (rows 68-78)
-  'cookies_florentine': { row: 68, name: 'פלורנטין', category: 'עוגיות', price: 0 },
-  'cookies_coffee_almonds': { row: 69, name: 'קפה שקדים', category: 'עוגיות', price: 0 },
-  'cookies_almonds_lemon': { row: 70, name: 'שקדים לימון', category: 'עוגיות', price: 0 },
-  'cookies_pecan': { row: 71, name: 'פקאן', category: 'עוגיות', price: 0 },
-  'cookies_brownies': { row: 72, name: 'בראוניז', category: 'עוגיות', price: 0 },
-  'cookies_butter_hazelnut': { row: 73, name: 'חמאה לוז', category: 'עוגיות', price: 0 },
-  'cookies_parmesan': { row: 74, name: 'פרמזן', category: 'עוגיות', price: 0 },
-  'cookies_dates': { row: 75, name: 'עוגיות תמרים', category: 'עוגיות', price: 0 },
-  'cookies_alfajores': { row: 76, name: 'אלפחורס', category: 'עוגיות', price: 0 },
-  'cookies_pistachio_lag_baomer': { row: 77, name: 'פיסטוק לל"ג', category: 'עוגיות', price: 0 },
-  'cookies_cocoa_chocolate': { row: 78, name: 'קקאו שוקולד', category: 'עוגיות', price: 0 },
+  cookies_florentine: { row: 68, name: 'פלורנטין', category: 'עוגיות', price: 0 },
+  cookies_coffee_almonds: { row: 69, name: 'קפה שקדים', category: 'עוגיות', price: 0 },
+  cookies_almonds_lemon: { row: 70, name: 'שקדים לימון', category: 'עוגיות', price: 0 },
+  cookies_pecan: { row: 71, name: 'פקאן', category: 'עוגיות', price: 0 },
+  cookies_brownies: { row: 72, name: 'בראוניז', category: 'עוגיות', price: 0 },
+  cookies_butter_hazelnut: { row: 73, name: 'חמאה לוז', category: 'עוגיות', price: 0 },
+  cookies_parmesan: { row: 74, name: 'פרמזן', category: 'עוגיות', price: 0 },
+  cookies_dates: { row: 75, name: 'עוגיות תמרים', category: 'עוגיות', price: 0 },
+  cookies_alfajores: { row: 76, name: 'אלפחורס', category: 'עוגיות', price: 0 },
+  cookies_pistachio_lag_baomer: { row: 77, name: 'פיסטוק לל"ג', category: 'עוגיות', price: 0 },
+  cookies_cocoa_chocolate: { row: 78, name: 'קקאו שוקולד', category: 'עוגיות', price: 0 },
 
   // Various - מוצרים שונים (rows 79-87)
-  'various_mushroom_pastry': { row: 79, name: 'מאפה פטריות', category: 'מוצרים שונים', price: 0 },
-  'various_cheese_berry_pastry': { row: 80, name: 'מאפה גבינה ופירות יער', category: 'מוצרים שונים', price: 0 },
-  'various_basque_cheesecake': { row: 81, name: 'עוגת גבינה באסקית', category: 'מוצרים שונים', price: 0 },
-  'various_yolk_pasteurized': { row: 82, name: 'חלמון מפוסטר', category: 'מוצרים שונים', price: 0 },
-  'various_parmesan_raw': { row: 83, name: 'פרמזן חומר גלם', category: 'מוצרים שונים', price: 0 },
-  'various_sweet_cream': { row: 84, name: 'שמנת מתוקה', category: 'מוצרים שונים', price: 0 },
-  'various_butter': { row: 85, name: 'חמאה', category: 'מוצרים שונים', price: 0 },
-  'various_pistachio_berry_strip': { row: 86, name: 'פס פיסטוק פירות יער', category: 'מוצרים שונים', price: 0 },
-  'various_pressburger_poppy': { row: 87, name: 'פרסבורגר פרג', category: 'מוצרים שונים', price: 0 }
+  various_mushroom_pastry: { row: 79, name: 'מאפה פטריות', category: 'מוצרים שונים', price: 0 },
+  various_cheese_berry_pastry: {
+    row: 80,
+    name: 'מאפה גבינה ופירות יער',
+    category: 'מוצרים שונים',
+    price: 0,
+  },
+  various_basque_cheesecake: {
+    row: 81,
+    name: 'עוגת גבינה באסקית',
+    category: 'מוצרים שונים',
+    price: 0,
+  },
+  various_yolk_pasteurized: { row: 82, name: 'חלמון מפוסטר', category: 'מוצרים שונים', price: 0 },
+  various_parmesan_raw: { row: 83, name: 'פרמזן חומר גלם', category: 'מוצרים שונים', price: 0 },
+  various_sweet_cream: { row: 84, name: 'שמנת מתוקה', category: 'מוצרים שונים', price: 0 },
+  various_butter: { row: 85, name: 'חמאה', category: 'מוצרים שונים', price: 0 },
+  various_pistachio_berry_strip: {
+    row: 86,
+    name: 'פס פיסטוק פירות יער',
+    category: 'מוצרים שונים',
+    price: 0,
+  },
+  various_pressburger_poppy: { row: 87, name: 'פרסבורגר פרג', category: 'מוצרים שונים', price: 0 },
 };

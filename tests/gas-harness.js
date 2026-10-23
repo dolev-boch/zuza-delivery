@@ -130,14 +130,24 @@ function loadBackend() {
     fs.readFileSync(path.join(root, 'Code.gs'), 'utf8') +
     '\n' +
     fs.readFileSync(path.join(root, 'OrderUpdates.gs'), 'utf8') +
-    '\n;({ PRODUCT_ROW_MAP, COLUMNS, UPDATES_SHEET_NAME, CUSTOM_PRODUCTS_START_ROW,' +
-    ' dayHasExistingOrder, findProductRow });';
+    // Stand-ins for CustomProducts.gs (live project): one permanent product
+    // registered right after the base catalog, pushing "אחרים" down a row.
+    `
+const ALLOWED_FIXED_PRODUCT_CATEGORIES = ['מאפים מתוקים'];
+function getCombinedProductMap() {
+  return Object.assign({}, PRODUCT_ROW_MAP, {
+    fixed_test_product: { row: 88, name: 'מוצר קבוע לבדיקה', category: 'מאפים מתוקים', isFixedCustom: true },
+  });
+}
+function getCustomProductsStartRow() { return 89; }
+;({ PRODUCT_ROW_MAP, COLUMNS, UPDATES_SHEET_NAME, dayHasExistingOrder, findProductRow,
+    getCombinedProductMap, getCustomProductsStartRow });`;
   const exported = vm.runInContext(source, context);
 
   // Day sheet with every regular product name at its mapped row
   function addDaySheet(name) {
     const sheet = ss.insertSheet(name);
-    Object.values(exported.PRODUCT_ROW_MAP).forEach((info) => {
+    Object.values(exported.getCombinedProductMap()).forEach((info) => {
       sheet.set(info.row, 1, info.name);
       sheet.set(info.row, 2, info.category);
     });
