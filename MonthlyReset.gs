@@ -48,7 +48,11 @@ function manualMonthlyBackupAndZero() {
   );
 }
 
-/** Run once from the editor or the menu: installs the monthly trigger. */
+/**
+ * Menu entry — the only setup step: schedules the monthly run itself (no
+ * manual trigger setup needed). It does NOT back up or zero anything now.
+ * Safe to click again: it never creates a second schedule.
+ */
 function installMonthlyResetTrigger() {
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     const fn = trigger.getHandlerFunction();
@@ -58,12 +62,27 @@ function installMonthlyResetTrigger() {
     }
   });
   ScriptApp.newTrigger('monthlyBackupAndZero').timeBased().onMonthDay(1).atHour(1).create();
-  Logger.log('Monthly backup + zero trigger installed (1st of each month, ~01:00)');
+
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const nextRun = String(next.getDate()).padStart(2, '0') + '/' +
+    String(next.getMonth() + 1).padStart(2, '0') + '/' + next.getFullYear();
+  Logger.log('Monthly backup + zero scheduled; first run ' + nextRun + ' ~01:00');
+
   try {
-    SpreadsheetApp.getUi().alert('✅ הופעל: גיבוי לדרייב ואיפוס כמויות יתבצע אוטומטית ב-1 לכל חודש בסביבות 01:00.');
+    SpreadsheetApp.getUi().alert(
+      'הגיבוי והאיפוס החודשי הופעלו',
+      '✅ התזמון הוגדר — אין צורך לעשות שום דבר נוסף.\n\n' +
+        '• כרגע לא בוצע שום גיבוי או איפוס — הנתונים הנוכחיים לא השתנו.\n' +
+        '• הריצה הראשונה: ' + nextRun + ' בסביבות 01:00, ואחר כך ב-1 לכל חודש.\n' +
+        '• בכל ריצה: גיבוי מלא לקובץ נפרד בדרייב ← בדיקת הגיבוי ← איפוס הכמויות.\n' +
+        '• תישלח הודעת מייל למנהל עם קישור לגיבוי.',
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
   } catch (err) {
     // Run from the editor — no UI
   }
+  return { scheduled: true, nextRun: nextRun };
 }
 
 // ============================================================================

@@ -144,3 +144,13 @@ test('after the reset, the next order of a day is written exactly as selected', 
   assert.equal(totalQty(t.sheets['24']), 3);
   assert.equal(t.sheets['24'].get(t.map.sweet_brioche_sugar.row, 3), 3);
 });
+
+test('clicking the menu item only schedules the run — current data is untouched', () => {
+  const t = setupMonth();
+  const res = t.context.installMonthlyResetTrigger();
+  assert.equal(res.scheduled, true);
+  assert.match(res.nextRun, /^01\/\d{2}\/\d{4}$/);
+  assert.equal(Object.keys(t.driveCopies).length, 0, 'no backup made now');
+  assert.equal(totalQty(t.sheets['24']), 106, 'nothing zeroed now');
+  assert.equal(t.sheets['24'].get(2, t.C.SUBMISSION_ID), 'oct24');
+});
