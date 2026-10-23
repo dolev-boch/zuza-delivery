@@ -177,7 +177,8 @@ function onOpen() {
     .addToUi();
 
   ui.createMenu('🗂️ גיבוי ואיפוס')
-    .addItem('📦 גיבוי ואיפוס חודשי', 'manualBackupAndReset')
+    .addItem('📦 גיבוי לדרייב ואיפוס כמויות (עכשיו)', 'manualMonthlyBackupAndZero') // MonthlyReset.gs
+    .addItem('⏰ הפעלת גיבוי ואיפוס אוטומטי ב-1 לחודש — הגדרה חד פעמית', 'installMonthlyResetTrigger')
     .addItem('📁 גיבוי בלבד (ללא איפוס)', 'manualBackupOnly')
     .addSeparator()
     .addItem('♻️ שחזור מגיבוי אחרון', 'manualRestoreFromBackup')

@@ -92,13 +92,26 @@ class FakeSpreadsheet {
   getSpreadsheetTimeZone() {
     return 'Asia/Jerusalem';
   }
+  clone() {
+    const copy = new FakeSpreadsheet();
+    Object.entries(this.sheets).forEach(([name, sheet]) => {
+      const c = copy.insertSheet(name);
+      c.cells = { ...sheet.cells };
+    });
+    return copy;
+  }
 }
 
 function loadBackend() {
   const ss = new FakeSpreadsheet();
   const emails = [];
   const cache = {};
+  const props = {};
+  const triggers = [];
+  const driveCopies = {}; // id -> { name, folderId, ss }
+  const drive = { failCopy: false, corruptCopy: false };
   let uuid = 0;
+  let copyId = 0;
 
   const context = {
     console,
@@ -107,7 +120,52 @@ function loadBackend() {
     JSON,
     Math,
     Logger: { log() {} },
-    SpreadsheetApp: { openById: () => ss, flush() {} },
+    SpreadsheetApp: {
+      openById: (id) => (driveCopies[id] ? driveCopies[id].ss : ss),
+      flush() {},
+      getUi: () => {
+        throw new Error('no UI in tests');
+      },
+    },
+    DriveApp: {
+      getFolderById: (id) => ({ id }),
+      getRootFolder: () => ({ id: 'root' }),
+      getFileById: () => ({
+        getParents: () => ({ hasNext: () => false }),
+        makeCopy: (name, folder) => {
+          if (drive.failCopy) throw new Error('Drive quota exceeded');
+          const id = `copy_${++copyId}`;
+          const copy = ss.clone();
+          if (drive.corruptCopy) copy.getSheets()[0].set(2, 3, 999);
+          driveCopies[id] = { name, folderId: folder.id, ss: copy };
+          return { getId: () => id, getName: () => name, getUrl: () => `https://drive/${id}` };
+        },
+      }),
+    },
+    PropertiesService: {
+      getScriptProperties: () => ({
+        getProperty: (k) => (k in props ? props[k] : null),
+        setProperty: (k, v) => (props[k] = v),
+      }),
+    },
+    ScriptApp: {
+      getProjectTriggers: () => triggers.slice(),
+      deleteTrigger: (t) => triggers.splice(triggers.indexOf(t), 1),
+      newTrigger: (fn) => {
+        const spec = { fn };
+        const builder = {
+          timeBased: () => builder,
+          onMonthDay: (d) => ((spec.monthDay = d), builder),
+          atHour: (h) => ((spec.hour = h), builder),
+          create: () => {
+            const t = { ...spec, getHandlerFunction: () => fn };
+            triggers.push(t);
+            return t;
+          },
+        };
+        return builder;
+      },
+    },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
     CacheService: {
       getScriptCache: () => ({
@@ -135,10 +193,13 @@ function loadBackend() {
     fs.readFileSync(path.join(root, 'Code.gs'), 'utf8') +
     '\n' +
     fs.readFileSync(path.join(root, 'OrderUpdates.gs'), 'utf8') +
+    '\n' +
+    fs.readFileSync(path.join(root, 'MonthlyReset.gs'), 'utf8') +
     // Stand-ins for CustomProducts.gs (live project): one permanent product
     // registered right after the base catalog, pushing "אחרים" down a row.
     `
 const ALLOWED_FIXED_PRODUCT_CATEGORIES = ['מאפים מתוקים'];
+const BACKUP_FOLDER_ID = 'backup_folder'; // defined in MonthlyBackup.gs in the live project
 function getCombinedProductMap() {
   return Object.assign({}, PRODUCT_ROW_MAP, {
     fixed_test_product: { row: 88, name: 'מוצר קבוע לבדיקה', category: 'מאפים מתוקים', isFixedCustom: true },
@@ -163,7 +224,7 @@ function getCustomProductsStartRow() { return 89; }
   const post = (payload) => parse(context.doPost({ postData: { contents: JSON.stringify(payload) } }));
   const get = (parameter) => parse(context.doGet({ parameter }));
 
-  return { ss, emails, context, exported, addDaySheet, post, get };
+  return { ss, emails, context, exported, addDaySheet, post, get, props, triggers, driveCopies, drive };
 }
 
 module.exports = { loadBackend, FakeSheet };

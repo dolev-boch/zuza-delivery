@@ -133,3 +133,11 @@ test('read-after-write check reports a product that could not be written', () =>
   const res = t.post({ ...ORDER, products: [...ORDER_PRODUCTS, p('various_butter', 'חמאה', 'מוצרים שונים', 2)] });
   assert.deepEqual(res.mismatches, [{ name: 'חמאה', requested: 2, in_sheet: null }]);
 });
+
+test('old submission id with no readable date counts as leftover data and is cleared', () => {
+  const t = setupWithLeftovers({ withOrderInfo: false });
+  t.sheet.set(2, t.C.SUBMISSION_ID, 'old_id_without_date');
+  const res = t.post(ORDER);
+  assert.equal(res.mode, 'order', 'not sent to approval');
+  assert.deepEqual(nonZeroRows(t), EXPECTED);
+});

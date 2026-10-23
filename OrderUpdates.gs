@@ -127,7 +127,8 @@ function dateParts(value) {
  * True when the day sheet already holds an order for this same date.
  * F2 may have been auto-converted to a Date by Sheets with a US locale
  * (dd/mm read as mm/dd), so a day/month-swapped match also counts.
- * A leftover order from a different month (sheet not reset) does not count.
+ * A leftover order from a different month (sheet not reset), or one whose
+ * date can't be read, does not count — it is cleared when the order arrives.
  */
 function dayHasExistingOrder(sheet, deliveryDate) {
   const info = sheet.getRange(2, COLUMNS.DATE, 1, 4).getValues()[0];
@@ -136,7 +137,7 @@ function dayHasExistingOrder(sheet, deliveryDate) {
 
   const existing = dateParts(info[0]);
   const requested = dateParts(deliveryDate);
-  if (!existing || !requested) return true;
+  if (!existing || !requested) return false;
 
   const same = existing[0] === requested[0] && existing[1] === requested[1] && existing[2] === requested[2];
   const swapped = existing[0] === requested[1] && existing[1] === requested[0] && existing[2] === requested[2];
@@ -210,15 +211,32 @@ function prepareDaySheetForNewOrder(ss, sheet, deliveryDate) {
   if (leftovers.length === 0 && !hasOrderInfo) return { cleared: false };
 
   if (leftovers.length > 0) archiveLeftovers(ss, sheet, info, leftovers);
+  clearDayOrderArea(sheet, customStartRow);
 
-  // Catalog rows: keep name/category, reset quantity to 0, clear notes + time
+  Logger.log('prepareDaySheetForNewOrder: sheet ' + sheet.getName() + ' cleared, ' +
+             leftovers.length + ' leftover rows archived');
+  return { cleared: true, archived: leftovers.length };
+}
+
+/**
+ * Empties a day sheet's order without touching its structure: every catalog
+ * product keeps its name/category with quantity 0, notes and times are
+ * cleared, free-text "אחרים" rows and the order details (F2:K2) are removed.
+ * Shared by the first-order clean-up and the monthly reset.
+ */
+function clearDayOrderArea(sheet, customStartRow) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  const names = sheet.getRange(2, COLUMNS.PRODUCT_NAME, lastRow - 1, 1).getValues();
+
   const catalogRowCount = Math.min(lastRow, customStartRow - 1) - 1;
   if (catalogRowCount > 0) {
-    const zeros = rows.slice(0, catalogRowCount).map(function(r) { return [hasValue(r[0]) ? 0 : '']; });
+    const zeros = names.slice(0, catalogRowCount).map(function(r) {
+      return [r[0] !== '' && r[0] !== null ? 0 : ''];
+    });
     sheet.getRange(2, COLUMNS.QUANTITY, catalogRowCount, 1).setValues(zeros);
     sheet.getRange(2, COLUMNS.NOTES, catalogRowCount, 2).clearContent();
   }
-  // Free-text "אחרים" rows belong to the old order — remove them entirely
   if (lastRow >= customStartRow) {
     sheet.getRange(customStartRow, 1, lastRow - customStartRow + 1, 5).clearContent();
   }
@@ -226,10 +244,6 @@ function prepareDaySheetForNewOrder(ss, sheet, deliveryDate) {
   sheet.getRange(2, COLUMNS.DATE, 1, 6).clearContent();
   sheet.getRange(2, 1, lastRow - 1, 5).setBackground(null).setFontWeight('normal');
   SpreadsheetApp.flush();
-
-  Logger.log('prepareDaySheetForNewOrder: sheet ' + sheet.getName() + ' cleared, ' +
-             leftovers.length + ' leftover rows archived');
-  return { cleared: true, archived: leftovers.length };
 }
 
 function archiveLeftovers(ss, sheet, info, leftovers) {
