@@ -63,3 +63,59 @@ test('postJson sends a CORS-simple text/plain body and returns the parsed answer
   assert.equal(seen.mode, undefined, 'not no-cors, so the response is readable');
   assert.deepEqual(JSON.parse(seen.body), { a: 1 });
 });
+
+// A fetch that never answers unless aborted — like a stalled mobile connection.
+const stalledFetch = (url, opts) =>
+  new Promise((_, reject) => {
+    opts.signal.addEventListener('abort', () => {
+      const err = new Error('aborted');
+      err.name = 'AbortError';
+      reject(err);
+    });
+  });
+
+test('hedging: a stalled first request is beaten by the parallel second one', async () => {
+  let calls = 0;
+  const fetchImpl = (url, opts) => (++calls === 1 ? stalledFetch(url, opts) : Promise.resolve(response(200, { success: true, n: calls })));
+  const started = Date.now();
+  const result = await fetchJsonWithRetry('https://x/y', { fetchImpl, hedgeAfterMs: 20, timeoutMs: 5000 });
+  assert.deepEqual(result, { success: true, n: 2 });
+  assert.ok(Date.now() - started < 1000, 'did not wait for the stalled request');
+});
+
+test('a fully stalled server times out instead of hanging, and reports progress', async () => {
+  const retries = [];
+  await assert.rejects(
+    fetchJsonWithRetry('https://x/y', {
+      fetchImpl: stalledFetch,
+      attempts: 3,
+      timeoutMs: 30,
+      hedgeAfterMs: 10,
+      delayMs: 1,
+      onRetry: (n, total) => retries.push(`${n}/${total}`),
+    }),
+    /תם הזמן/
+  );
+  assert.deepEqual(retries, ['2/3', '3/3']);
+});
+
+test('hedge:false never has two requests in flight (for data-changing calls)', async () => {
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const fetchImpl = async () => {
+    maxInFlight = Math.max(maxInFlight, ++inFlight);
+    await new Promise((r) => setTimeout(r, 50));
+    inFlight--;
+    return response(200, { success: true });
+  };
+  await fetchJsonWithRetry('https://x/y', { fetchImpl, hedge: false, hedgeAfterMs: 5 });
+  assert.equal(maxInFlight, 1);
+});
+
+test('a server answer of success:false is returned as-is, not retried', async () => {
+  let calls = 0;
+  const fetchImpl = async () => (calls++, response(200, { success: false, error: 'Submission ID mismatch' }));
+  const result = await fetchJsonWithRetry('https://x/y', { fetchImpl, delayMs: 1 });
+  assert.equal(result.error, 'Submission ID mismatch');
+  assert.equal(calls, 1);
+});

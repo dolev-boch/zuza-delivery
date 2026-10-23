@@ -666,7 +666,7 @@
       <div id="loadingState">
         <div class="loading">
           <div class="spinner"></div>
-          <p style="color: #666; font-size: 16px">טוען נתונים...</p>
+          <p style="color: #666; font-size: 16px" id="loadingText">טוען נתונים...</p>
         </div>
       </div>
 
@@ -1052,7 +1052,12 @@
           console.log('Loading from:', url);
 
           // Retried: Apps Script intermittently answers 404/5xx on its redirect hop
-          const result = await ZuzaOrderUpdate.fetchJsonWithRetry(url, { attempts: 4 });
+          const result = await ZuzaOrderUpdate.fetchJsonWithRetry(url, {
+            onRetry: (n, total) => {
+              document.getElementById('loadingText').textContent =
+                `החיבור איטי, מנסה שוב... (${n}/${total})`;
+            },
+          });
           console.log('Response:', result);
 
           if (!result.success) {
@@ -1338,7 +1343,12 @@
       function showError(message) {
         document.getElementById('loadingState').style.display = 'none';
         const errorDiv = document.getElementById('errorState');
-        errorDiv.innerHTML = `<div class="error"><strong>שגיאה:</strong> ${message}</div>`;
+        errorDiv.innerHTML = `<div class="error"><strong>שגיאה:</strong> ${message}</div>
+          <button type="button" onclick="window.location.reload()"
+            style="display:block;width:100%;margin-top:12px;padding:14px;border:none;border-radius:10px;
+                   background:#1a2f2f;color:#c4a575;font-size:16px;font-weight:700;font-family:inherit;">
+            נסה שוב
+          </button>`;
         errorDiv.style.display = 'block';
       }
 

@@ -213,7 +213,9 @@
         }
         try {
           const result = await ZuzaOrderUpdate.fetchJsonWithRetry(apiUrl('get_update_request'), {
-            attempts: 4,
+            onRetry: (n, total) => {
+              document.getElementById('loading').textContent = `החיבור איטי, מנסה שוב... (${n}/${total})`;
+            },
           });
           if (!result.success) throw new Error(result.error || 'הבקשה לא נמצאה');
           const req = result.request;
@@ -249,7 +251,9 @@
           // approve_update is idempotent server-side (already-approved requests
           // are never applied twice), so retrying on a lost response is safe.
           const result = await ZuzaOrderUpdate.fetchJsonWithRetry(apiUrl('approve_update'), {
-            attempts: 3,
+            attempts: 4,
+            hedge: false, // changes data — never send two at once
+            timeoutMs: 30000,
           });
           if (!result.success) throw new Error(result.error || 'שגיאת שרת');
           markApproved(result.approved_at);
