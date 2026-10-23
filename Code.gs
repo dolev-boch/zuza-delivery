@@ -49,6 +49,8 @@ function doPost(e) {
 
     if (data.action === 'confirm') {
       return handleConfirmation(data);
+    } else if (data.action === 'update_request') { // [ORDER-UPDATES] see OrderUpdates.gs
+      return handleUpdateRequest(data);
     } else if (data.action === 'get_products_list') {
       return handleGetProductsList();
     } else {
@@ -63,6 +65,9 @@ function doPost(e) {
 
 function doGet(e) {
   try {
+    const orderUpdatesResponse = handleOrderUpdatesGet(e); // [ORDER-UPDATES] see OrderUpdates.gs
+    if (orderUpdatesResponse) return orderUpdatesResponse;
+
     const action = e.parameter.action;
 
     if (action === 'get_delivery') {
@@ -599,6 +604,15 @@ function handleDeliverySubmission(data) {
       return createJsonResponse({ success: true, message: 'Already processed' });
     }
 
+    // [ORDER-UPDATES] Same submission retried → answer like the first time.
+    // Day already ordered → never add on top of it; store an update request
+    // for Shalev to approve instead (see OrderUpdates.gs).
+    const remembered = recallSubmission(data.submission_id);
+    if (remembered) return createJsonResponse(remembered);
+    if (dayHasExistingOrder(sheet, deliveryDate)) {
+      return createJsonResponse(saveUpdateRequest(ss, sheet, data, day));
+    }
+
     Logger.log('Updating delivery data...');
     updateDeliveryData(sheet, data, actualSubmissionTime);
     Logger.log('Data updated successfully');
@@ -610,11 +624,9 @@ function handleDeliverySubmission(data) {
     const emailSent = sendConfirmationEmailWithRetry(data, sheet, day);
     Logger.log('Email sent status: ' + emailSent);
 
-    return createJsonResponse({
-      success: true,
-      message: 'Delivery recorded',
-      emailSent: emailSent
-    });
+    const response = { success: true, mode: 'order', message: 'Delivery recorded', emailSent: emailSent };
+    rememberSubmission(data.submission_id, response); // [ORDER-UPDATES]
+    return createJsonResponse(response);
 
   } catch (error) {
     Logger.log('ERROR in handleDeliverySubmission: ' + error.toString());

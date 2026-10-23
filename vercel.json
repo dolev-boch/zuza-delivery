@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/confirm", "destination": "/confirm.html" },
+    { "source": "/approve", "destination": "/approve.html" }
+  ]
+}

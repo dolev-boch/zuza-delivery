@@ -779,6 +779,7 @@
       </div>
     </div>
 
+    <script src="order-update.js"></script>
     <script>
       const SCRIPT_URL =
         'https://script.google.com/macros/s/AKfycbzdxZEpJPFaFtYiDDKa_4BmNWsehU8RENKq6TpgODu5-kcREwWIwJ7LjnkkjzWM1QpSgA/exec';
@@ -1050,16 +1051,8 @@
           }&submission_id=${encodeURIComponent(params.submission_id)}`;
           console.log('Loading from:', url);
 
-          const response = await fetch(url, {
-            method: 'GET',
-            redirect: 'follow',
-          });
-
-          if (!response.ok) {
-            throw new Error(`שגיאת שרת: ${response.status}`);
-          }
-
-          const result = await response.json();
+          // Retried: Apps Script intermittently answers 404/5xx on its redirect hop
+          const result = await ZuzaOrderUpdate.fetchJsonWithRetry(url, { attempts: 4 });
           console.log('Response:', result);
 
           if (!result.success) {
@@ -1254,21 +1247,7 @@
 
           console.log('Submitting confirmation:', confirmationData);
 
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 60000);
-
-          const response = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(confirmationData),
-            redirect: 'follow',
-            signal: controller.signal,
-          });
-
-          clearTimeout(timeoutId);
+          await sendConfirmationWithRetry(confirmationData);
           console.log('Request completed');
 
           document.getElementById('loadingOverlay').classList.remove('show');
@@ -1289,6 +1268,44 @@
           document.getElementById('btnCustomConfirm').disabled = false;
         } finally {
           isSubmitting = false;
+        }
+      }
+
+      // Reads the server's answer instead of firing blind (no-cors), so a
+      // failed confirmation is no longer shown as success. When the answer is
+      // lost, checks whether the confirmation landed before sending again.
+      async function sendConfirmationWithRetry(confirmationData, attempts = 3) {
+        let lastError;
+        for (let i = 0; i < attempts; i++) {
+          try {
+            const result = await ZuzaOrderUpdate.postJson(SCRIPT_URL, confirmationData, {
+              timeoutMs: 60000,
+            });
+            if (!result.success) throw new Error(result.error || 'שגיאת שרת');
+            return result;
+          } catch (err) {
+            lastError = err;
+            console.error(`Confirmation attempt ${i + 1} failed:`, err);
+            if (await confirmationLanded(confirmationData)) return { success: true };
+            if (i < attempts - 1) await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+          }
+        }
+        throw lastError;
+      }
+
+      async function confirmationLanded(confirmationData) {
+        try {
+          const url = `${SCRIPT_URL}?action=get_delivery&day=${encodeURIComponent(
+            confirmationData.day
+          )}&submission_id=${encodeURIComponent(confirmationData.submission_id)}`;
+          const result = await ZuzaOrderUpdate.fetchJsonWithRetry(url, { attempts: 2 });
+          return (
+            result.success &&
+            result.data.confirmation_status !== 'pending' &&
+            result.data.confirmation_status !== deliveryData.confirmation_status
+          );
+        } catch (err) {
+          return false;
         }
       }
 

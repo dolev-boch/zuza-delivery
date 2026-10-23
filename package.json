@@ -1,0 +1,7 @@
+{
+  "name": "zuza-delivery",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/"
+  }
+}
