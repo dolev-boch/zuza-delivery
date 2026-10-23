@@ -947,6 +947,54 @@
         opacity: 0.9;
       }
 
+      .submit-bar-inner {
+        display: flex;
+        gap: 10px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .submit-bar-inner .submit-btn {
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+      }
+
+      .back-to-search-btn {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        width: 96px;
+        padding: 8px 6px;
+        background: #f5f0e8;
+        color: var(--dark-green);
+        border: 2px solid var(--gold);
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.2;
+        font-family: inherit;
+        cursor: pointer;
+        text-align: center;
+      }
+
+      .back-to-search-btn:active {
+        opacity: 0.85;
+      }
+
+      @media (min-width: 600px) {
+        .back-to-search-btn {
+          flex-direction: row;
+          width: auto;
+          padding: 0 16px;
+          font-size: 14px;
+          gap: 8px;
+        }
+      }
+
       .submit-btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -1538,6 +1586,20 @@
 
     <!-- Submit Section -->
     <div class="submit-section">
+      <div class="submit-bar-inner">
+      <button
+        type="button"
+        class="back-to-search-btn"
+        onclick="goToProductSearch()"
+        aria-label="חזרה לחיפוש מוצרים"
+        title="חזרה לחיפוש מוצרים"
+      >
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8" stroke-width="2" />
+          <path d="M21 21l-4.35-4.35" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <span>חזרה לחיפוש מוצרים</span>
+      </button>
       <button type="button" class="submit-btn" id="reviewBtn" onclick="openReview()">
         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -1555,6 +1617,7 @@
         </svg>
         סקור ושלח תעודה
       </button>
+      </div>
     </div>
 
     <script src="order-update.js"></script>
@@ -2723,6 +2786,13 @@
         }, 80);
       }
 
+      function goToProductSearch() {
+        const section = document.querySelector('.search-section');
+        const input = document.getElementById('productSearch');
+        section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => input.focus({ preventScroll: true }), 400);
+      }
+
       function clearSearch() {
         document.getElementById('productSearch').value = '';
         document.getElementById('searchClearBtn').classList.remove('visible');
@@ -3141,6 +3211,7 @@
       window.handleSearchInput = handleSearchInput;
       window.selectSearchResult = selectSearchResult;
       window.clearSearch = clearSearch;
+      window.goToProductSearch = goToProductSearch;
       window.dismissUpdateNotice = dismissUpdateNotice;
       window.toggleCategory = toggleCategory;
       window.quickSet = quickSet;

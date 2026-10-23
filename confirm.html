@@ -413,6 +413,58 @@
         outline: none;
         border-color: #2196f3;
       }
+      .modal-search-results:empty {
+        display: none;
+      }
+      .modal-search-results {
+        margin-top: 8px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        max-height: 320px;
+        overflow-y: auto;
+        background: #fff;
+      }
+      .modal-search-result {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .modal-search-result:last-child {
+        border-bottom: none;
+      }
+      .modal-search-result-name {
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .modal-search-result-category {
+        font-size: 12px;
+        color: #888;
+        margin-top: 2px;
+      }
+      .modal-search-result mark {
+        background: #fff3a8;
+        padding: 0;
+      }
+      .modal-search-empty {
+        padding: 14px;
+        color: #666;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .modal-search-empty button {
+        margin-top: 8px;
+        padding: 8px 14px;
+        border: none;
+        border-radius: 6px;
+        background: #ff9800;
+        color: #fff;
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+      }
       .modal-category {
         margin-bottom: 20px;
       }
@@ -745,8 +797,10 @@
               type="text"
               id="modalSearchInput"
               placeholder="חיפוש מוצר..."
+              autocomplete="off"
               oninput="filterModalProducts(this.value)"
             />
+            <div class="modal-search-results" id="modalSearchResults"></div>
           </div>
           <div class="custom-product-section">
             <h3>➕ הוספת מוצר חדש (אחרים)</h3>
@@ -1409,6 +1463,7 @@
       function closeAddProductsModal() {
         document.getElementById('addProductsModal').classList.remove('show');
         document.getElementById('modalSearchInput').value = '';
+        filterModalProducts('');
         document.body.style.overflow = '';
       }
 
@@ -1484,18 +1539,111 @@
         productsDiv.classList.toggle('active');
       }
 
-      function filterModalProducts(searchTerm) {
-        const lowerSearch = searchTerm.toLowerCase();
-        const productItems = document.querySelectorAll('.modal-product-item');
+      // Search ignores geresh/quotes and extra spaces, so "פוקאצה" finds "פוקאצ'ה"
+      function normalizeForSearch(text) {
+        return String(text || '')
+          .toLowerCase()
+          .replace(/['"׳״`]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
 
-        productItems.forEach((item) => {
-          const productName = item.dataset.productName;
-          if (productName.includes(lowerSearch)) {
-            item.style.display = 'flex';
-          } else {
-            item.style.display = 'none';
-          }
+      function escapeHtml(text) {
+        return String(text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function allModalProducts() {
+        const list = [];
+        Object.values(CATEGORIES).forEach((categoryData) => {
+          categoryData.products.forEach((entry) => {
+            const name = typeof entry === 'object' ? entry.name : entry;
+            const key = typeof entry === 'object' ? entry.key : PRODUCT_KEYS[entry];
+            if (key) list.push({ key, name, category: categoryData.name });
+          });
         });
+        return list;
+      }
+
+      function highlightModalMatch(name, query) {
+        const idx = name.indexOf(query);
+        if (idx === -1) return escapeHtml(name);
+        return (
+          escapeHtml(name.slice(0, idx)) +
+          '<mark>' +
+          escapeHtml(name.slice(idx, idx + query.length)) +
+          '</mark>' +
+          escapeHtml(name.slice(idx + query.length))
+        );
+      }
+
+      // Autocomplete: matching products listed right under the search box,
+      // each with its own add button (categories are hidden while searching).
+      function filterModalProducts(searchTerm) {
+        const resultsEl = document.getElementById('modalSearchResults');
+        const categoriesEl = document.getElementById('modalCategoriesContainer');
+        const query = searchTerm.trim();
+        const normalizedQuery = normalizeForSearch(query);
+
+        if (!normalizedQuery) {
+          resultsEl.innerHTML = '';
+          categoriesEl.style.display = '';
+          return;
+        }
+        categoriesEl.style.display = 'none';
+
+        const matches = allModalProducts().filter((p) =>
+          normalizeForSearch(p.name).includes(normalizedQuery)
+        );
+
+        if (!matches.length) {
+          resultsEl.innerHTML = `
+            <div class="modal-search-empty">
+              לא נמצא מוצר בשם "${escapeHtml(query)}".
+              <br />
+              <button type="button" onclick="useSearchAsCustomProduct()">
+                הוספת "${escapeHtml(query)}" כמוצר חדש (אחרים)
+              </button>
+            </div>`;
+          return;
+        }
+
+        resultsEl.innerHTML = matches
+          .map((p) => {
+            const inDelivery = deliveryData.products.some((d) => d.key === p.key);
+            const added = !!addedProducts[p.key];
+            const control = inDelivery
+              ? '<span style="color: #666; font-size: 13px;">כבר במשלוח</span>'
+              : added
+                ? '<span style="color: #4caf50; font-size: 13px;">נוסף ✓</span>'
+                : `<button class="modal-add-btn" data-key="${escapeHtml(p.key)}"
+                     data-name="${escapeHtml(p.name)}" data-category="${escapeHtml(p.category)}"
+                     onclick="addProductFromSearch(this)">הוסף +</button>`;
+            return `
+              <div class="modal-search-result">
+                <div>
+                  <div class="modal-search-result-name">${highlightModalMatch(p.name, query)}</div>
+                  <div class="modal-search-result-category">${escapeHtml(p.category)}</div>
+                </div>
+                ${control}
+              </div>`;
+          })
+          .join('');
+      }
+
+      function addProductFromSearch(button) {
+        addProductToList(button.dataset.key, button.dataset.name, button.dataset.category);
+      }
+
+      function useSearchAsCustomProduct() {
+        const searchInput = document.getElementById('modalSearchInput');
+        document.getElementById('customProductInput').value = searchInput.value.trim();
+        searchInput.value = '';
+        filterModalProducts('');
+        addCustomProduct();
       }
 
       function addProductToList(productKey, productName, categoryName) {
@@ -1509,6 +1657,7 @@
         // Update UI
         renderAddedProductsList();
         renderModalCategories(); // Refresh to show "נוסף" status
+        filterModalProducts(document.getElementById('modalSearchInput').value);
       }
 
       function addCustomProduct() {
