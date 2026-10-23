@@ -18,21 +18,21 @@ const order = (id, extra = {}) => ({
 test('email holds exactly the form data', () => {
   const f = buildOrderCopyFields(order('a'));
   assert.equal(f._subject, 'הזמנה מטופס זוזה - 24/10/2026 - אדל');
-  assert.equal(f['תאריך משלוח'], '24/10/2026');
-  assert.equal(f['ממלא התעודה'], 'אדל');
-  assert.equal(f['מספר תעודה'], '77');
-  assert.equal(f['סוג שליחה'], 'הזמנה');
-  assert.equal(f['מספר מוצרים'], '3');
-  assert.equal(f['סה"כ יחידות'], '18');
+  assert.equal(f['Delivery date'], '24/10/2026');
+  assert.equal(f['Filled by'], 'אדל');
+  assert.equal(f['Certificate number'], '77');
+  assert.equal(f['Type'], 'הזמנה');
+  assert.equal(f['Products count'], '3');
+  assert.equal(f['Total units'], '18');
   assert.equal(
-    f['מוצרים'],
+    f['Products'],
     [
       '1. בריוש סוכרה (מאפים מתוקים): 3',
       '2. כריך חלה וקציצות (כריכים): 5 — הערה: בדיקה',
       '3. בדיקה (אחרים): 10',
     ].join('\n')
   );
-  assert.equal(buildOrderCopyFields(order('b', { action: 'update_request' }))['סוג שליחה'], 'עדכון להזמנה קיימת');
+  assert.equal(buildOrderCopyFields(order('b', { action: 'update_request' }))['Type'], 'עדכון להזמנה קיימת');
 });
 
 test('sent straight to FormSubmit for dolev.boch@gmail.com, once per submission', async () => {
@@ -43,7 +43,7 @@ test('sent straight to FormSubmit for dolev.boch@gmail.com, once per submission'
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, 'https://formsubmit.co/ajax/dolev.boch@gmail.com');
   assert.equal(calls[0].opts.method, 'POST');
-  assert.equal(JSON.parse(calls[0].opts.body)['תאריך משלוח'], '24/10/2026');
+  assert.equal(JSON.parse(calls[0].opts.body)['Delivery date'], '24/10/2026');
 });
 
 test('a failing or unreachable email service never throws', async () => {
@@ -53,4 +53,10 @@ test('a failing or unreachable email service never throws', async () => {
   assert.equal(await sendOrderCopyEmail(order('down'), { fetchImpl: down }), false);
   const error500 = async () => ({ ok: false });
   assert.equal(await sendOrderCopyEmail(order('err'), { fetchImpl: error500 }), false);
+});
+
+test('field names are Latin only (FormSubmit drops non-Latin names), values may be Hebrew', () => {
+  const f = buildOrderCopyFields(order('latin'));
+  Object.keys(f).forEach((k) => assert.match(k, /^[A-Za-z_ ]+$/, `field name "${k}"`));
+  assert.match(f.Products, /בריוש סוכרה/);
 });

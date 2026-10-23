@@ -166,18 +166,20 @@
       return `${i + 1}. ${p.name} (${p.category}): ${parseInt(p.quantity, 10) || 0}${notes}`;
     });
     const totalUnits = products.reduce((sum, p) => sum + (parseInt(p.quantity, 10) || 0), 0);
+    // FormSubmit drops non-Latin field NAMES, so names are English; the
+    // values (and the subject) stay in Hebrew.
     return {
       _subject: `הזמנה מטופס זוזה - ${data.delivery_date}${data.filler_name ? ' - ' + data.filler_name : ''}`,
       _template: 'table',
       _captcha: 'false',
-      'תאריך משלוח': data.delivery_date || '',
-      'ממלא התעודה': data.filler_name || '',
-      'מספר תעודה': data.certificate_number || '',
-      'סוג שליחה': data.action === 'update_request' ? 'עדכון להזמנה קיימת' : 'הזמנה',
-      'מספר מוצרים': String(products.length),
-      'סה"כ יחידות': String(totalUnits),
-      'מוצרים': lines.join('\n'),
-      'מזהה שליחה': data.submission_id || '',
+      'Delivery date': data.delivery_date || '',
+      'Filled by': data.filler_name || '',
+      'Certificate number': data.certificate_number || '',
+      'Type': data.action === 'update_request' ? 'עדכון להזמנה קיימת' : 'הזמנה',
+      'Products count': String(products.length),
+      'Total units': String(totalUnits),
+      'Products': lines.join('\n'),
+      'Submission ID': data.submission_id || '',
     };
   }
 
