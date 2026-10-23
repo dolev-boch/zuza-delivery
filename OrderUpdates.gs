@@ -170,6 +170,120 @@ function checkDayStatus(deliveryDate, submissionId) {
 }
 
 // ============================================================================
+// FIRST ORDER OF THE DAY — always written onto a clean sheet
+// ----------------------------------------------------------------------------
+// updateDeliveryData() ADDS each quantity to the cell's current value. If the
+// day sheet still holds data from another date (e.g. last month's same day,
+// when the monthly reset didn't run, or old test orders), that data was being
+// merged into the new order. Before the first order of a date is written, any
+// leftovers are copied to an archive sheet and the order area is cleared, so
+// the sheet ends up holding exactly what was ordered.
+// ============================================================================
+
+const ARCHIVE_SHEET_NAME = 'ארכיון נתונים שנוקו';
+const ARCHIVE_HEADERS = [
+  'נוקה בתאריך', 'גיליון', 'תאריך ישן', 'מזהה שליחה ישן', 'שורה', 'מוצר', 'קטגוריה', 'כמות', 'הערות'
+];
+
+/** Call right before writing the first order of a date into the day sheet. */
+function prepareDaySheetForNewOrder(ss, sheet, deliveryDate) {
+  if (dayHasExistingOrder(sheet, deliveryDate)) return { cleared: false };
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { cleared: false };
+
+  const customStartRow = ouCustomStartRow();
+  const rows = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+  const info = sheet.getRange(2, COLUMNS.DATE, 1, 6).getValues()[0];
+  const hasValue = function(v) { return v !== '' && v !== null && v !== undefined; };
+
+  const leftovers = [];
+  rows.forEach(function(r, i) {
+    const row = i + 2;
+    const qty = parseInt(r[2], 10) || 0;
+    const isCustomRow = row >= customStartRow && hasValue(r[0]);
+    if (qty !== 0 || hasValue(r[3]) || isCustomRow) {
+      leftovers.push({ row: row, name: r[0], category: r[1], qty: r[2], notes: r[3] });
+    }
+  });
+  const hasOrderInfo = info.some(hasValue) || hasValue(rows[0][4]);
+  if (leftovers.length === 0 && !hasOrderInfo) return { cleared: false };
+
+  if (leftovers.length > 0) archiveLeftovers(ss, sheet, info, leftovers);
+
+  // Catalog rows: keep name/category, reset quantity to 0, clear notes + time
+  const catalogRowCount = Math.min(lastRow, customStartRow - 1) - 1;
+  if (catalogRowCount > 0) {
+    const zeros = rows.slice(0, catalogRowCount).map(function(r) { return [hasValue(r[0]) ? 0 : '']; });
+    sheet.getRange(2, COLUMNS.QUANTITY, catalogRowCount, 1).setValues(zeros);
+    sheet.getRange(2, COLUMNS.NOTES, catalogRowCount, 2).clearContent();
+  }
+  // Free-text "אחרים" rows belong to the old order — remove them entirely
+  if (lastRow >= customStartRow) {
+    sheet.getRange(customStartRow, 1, lastRow - customStartRow + 1, 5).clearContent();
+  }
+  sheet.getRange(2, COLUMNS.LAST_UPDATED).clearContent();
+  sheet.getRange(2, COLUMNS.DATE, 1, 6).clearContent();
+  sheet.getRange(2, 1, lastRow - 1, 5).setBackground(null).setFontWeight('normal');
+  SpreadsheetApp.flush();
+
+  Logger.log('prepareDaySheetForNewOrder: sheet ' + sheet.getName() + ' cleared, ' +
+             leftovers.length + ' leftover rows archived');
+  return { cleared: true, archived: leftovers.length };
+}
+
+function archiveLeftovers(ss, sheet, info, leftovers) {
+  let archive = ss.getSheetByName(ARCHIVE_SHEET_NAME);
+  if (!archive) {
+    archive = ss.insertSheet(ARCHIVE_SHEET_NAME);
+    archive.getRange(1, 1, 1, ARCHIVE_HEADERS.length).setValues([ARCHIVE_HEADERS]).setFontWeight('bold');
+    archive.setFrozenRows(1);
+  }
+  const now = getIsraeliTime();
+  const oldDate = info[0] instanceof Date
+    ? Utilities.formatDate(info[0], ss.getSpreadsheetTimeZone(), 'dd/MM/yyyy')
+    : String(info[0] || '');
+  const values = leftovers.map(function(l) {
+    return [now, sheet.getName(), oldDate, String(info[3] || ''), l.row, l.name, l.category, l.qty, l.notes];
+  });
+  archive.getRange(archive.getLastRow() + 1, 1, values.length, ARCHIVE_HEADERS.length)
+    .setNumberFormat('@').setValues(values);
+}
+
+/**
+ * Read-after-write check: every product of the order must now hold exactly
+ * the ordered quantity. Returns the products that don't (empty = all good).
+ */
+function verifyOrderWritten(sheet, data) {
+  const products = sanitizeRequestedProducts(data.products);
+  const colA = readColumnA(sheet);
+  const lastRow = sheet.getLastRow();
+  const qty = lastRow >= 2 ? sheet.getRange(2, COLUMNS.QUANTITY, lastRow - 1, 1).getValues() : [];
+  const productMap = ouProductMap();
+  const customStartRow = ouCustomStartRow();
+
+  const expectedByRow = {};
+  const mismatches = [];
+  products.forEach(function(p) {
+    const row = findProductRow(colA, p, productMap, customStartRow);
+    if (!row) {
+      mismatches.push({ name: p.name, requested: p.quantity, in_sheet: null });
+      return;
+    }
+    expectedByRow[row] = expectedByRow[row] || { name: p.name, requested: 0 };
+    expectedByRow[row].requested += p.quantity;
+  });
+  Object.keys(expectedByRow).forEach(function(row) {
+    const e = expectedByRow[row];
+    const actual = parseInt(qty[row - 2][0], 10) || 0;
+    if (actual !== e.requested) mismatches.push({ name: e.name, requested: e.requested, in_sheet: actual });
+  });
+
+  if (mismatches.length) Logger.log('verifyOrderWritten MISMATCH: ' + JSON.stringify(mismatches));
+  return mismatches;
+}
+
+// ============================================================================
 // IDEMPOTENCY — the same submission_id is processed at most once
 // ============================================================================
 

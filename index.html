@@ -2423,6 +2423,15 @@
 
           if (result.mode === 'update_request') {
             showUpdateSentPopup(data);
+          } else if (result.mismatches && result.mismatches.length) {
+            // Server read the sheet back after writing and found differences
+            alert(
+              '⚠️ התעודה נשלחה, אבל המוצרים הבאים לא נרשמו בקובץ בכמות שנבחרה:\n\n' +
+                result.mismatches
+                  .map((m) => `• ${m.name}: נבחר ${m.requested}, בקובץ ${m.in_sheet === null ? 'לא נמצא' : m.in_sheet}`)
+                  .join('\n') +
+                '\n\nנא לעדכן את שליו.'
+            );
           } else {
             showMessage('success', '✓ תעודת המשלוח נשלחה בהצלחה! אימייל נשלח לאישור.');
           }

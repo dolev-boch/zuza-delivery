@@ -877,6 +877,9 @@ function handleDeliverySubmission(data) {
     if (dayHasExistingOrder(sheet, deliveryDate)) {
       return createJsonResponse(saveUpdateRequest(ss, sheet, data, day));
     }
+    // [ORDER-UPDATES] First order of this date: archive + clear leftovers from
+    // any other date so they are never merged into this order.
+    prepareDaySheetForNewOrder(ss, sheet, deliveryDate);
 
     Logger.log('Updating delivery data...');
     updateDeliveryData(sheet, data, actualSubmissionTime);
@@ -889,7 +892,14 @@ function handleDeliverySubmission(data) {
     const emailSent = sendConfirmationEmailWithRetry(data, sheet, day);
     Logger.log('Email sent status: ' + emailSent);
 
-    const response = { success: true, mode: 'order', message: 'Delivery recorded', emailSent: emailSent };
+    const mismatches = verifyOrderWritten(sheet, data); // [ORDER-UPDATES] read-after-write check
+    const response = {
+      success: true,
+      mode: 'order',
+      message: 'Delivery recorded',
+      emailSent: emailSent,
+      mismatches: mismatches,
+    };
     rememberSubmission(data.submission_id, response); // [ORDER-UPDATES]
     return createJsonResponse(response);
   } catch (error) {

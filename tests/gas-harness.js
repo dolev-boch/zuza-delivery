@@ -89,6 +89,9 @@ class FakeSpreadsheet {
   getSheets() {
     return Object.values(this.sheets);
   }
+  getSpreadsheetTimeZone() {
+    return 'Asia/Jerusalem';
+  }
 }
 
 function loadBackend() {
@@ -117,6 +120,8 @@ function loadBackend() {
     Utilities: {
       getUuid: () => `00000000-0000-0000-0000-${String(++uuid).padStart(12, '0')}`,
       sleep() {},
+      formatDate: (d) =>
+        `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`,
     },
     ContentService: {
       MimeType: { JSON: 'json' },
