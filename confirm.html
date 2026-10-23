@@ -1247,6 +1247,13 @@
 
           console.log('Submitting confirmation:', confirmationData);
 
+          if (await orderChangedSincePageLoad(params)) {
+            document.getElementById('loadingOverlay').classList.remove('show');
+            alert('ההזמנה עודכנה מאז שהדף נפתח (למשל עדכון שאושר). הדף ייטען מחדש עם הכמויות העדכניות.');
+            window.location.reload();
+            return;
+          }
+
           await sendConfirmationWithRetry(confirmationData);
           console.log('Request completed');
 
@@ -1291,6 +1298,25 @@
           }
         }
         throw lastError;
+      }
+
+      // An approved update request may have replaced quantities after this page
+      // loaded; posting the stale page back would undo that approval.
+      async function orderChangedSincePageLoad(params) {
+        try {
+          const url = `${SCRIPT_URL}?action=get_delivery&day=${encodeURIComponent(
+            params.day
+          )}&submission_id=${encodeURIComponent(params.submission_id)}`;
+          const result = await ZuzaOrderUpdate.fetchJsonWithRetry(url, { attempts: 2 });
+          if (!result.success) return false;
+          const serverQty = {};
+          result.data.products.forEach((p) => (serverQty[p.key] = p.quantity));
+          return Object.keys(originalQuantities).some(
+            (key) => (serverQty[key] || 0) !== originalQuantities[key]
+          ) || Object.keys(serverQty).some((key) => !(key in originalQuantities));
+        } catch (err) {
+          return false; // can't tell — don't block the confirmation
+        }
       }
 
       async function confirmationLanded(confirmationData) {
